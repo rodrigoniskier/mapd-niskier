@@ -1,5 +1,10 @@
-from django.test import SimpleTestCase
+from types import SimpleNamespace
+from unittest.mock import patch
 
+from django.test import SimpleTestCase, override_settings
+from pydantic import BaseModel
+
+from core.services import gemini
 from core.services.gemini import AlternativasSchema, PacoteEstudoSchema, QuestaoObjetivaSchema
 
 
@@ -12,6 +17,28 @@ def encontrar_chave(objeto, chave_proibida):
     if isinstance(objeto, list):
         return any(encontrar_chave(valor, chave_proibida) for valor in objeto)
     return False
+
+
+class SaidaMinima(BaseModel):
+    valor: str
+
+
+class ClienteFalso:
+    def __init__(self):
+        self.closed = False
+        self.models = self.Modelos(self)
+
+    class Modelos:
+        def __init__(self, cliente):
+            self.cliente = cliente
+
+        def generate_content(self, **kwargs):
+            if self.cliente.closed:
+                raise RuntimeError("cliente fechado antes da requisição")
+            return SimpleNamespace(text='{"valor":"ok"}')
+
+    def close(self):
+        self.closed = True
 
 
 class GeminiSchemaCompatibilidadeTest(SimpleTestCase):
@@ -46,3 +73,25 @@ class GeminiSchemaCompatibilidadeTest(SimpleTestCase):
                 "E": "Alternativa E",
             },
         )
+
+    @override_settings(GEMINI_MODEL="modelo-teste", GEMINI_FALLBACK_MODEL="")
+    @patch("core.services.gemini._config_estruturada", return_value={})
+    @patch("core.services.gemini._client")
+    def test_cliente_permanece_aberto_ate_terminar_a_requisicao(
+        self,
+        client_mock,
+        config_mock,
+    ):
+        cliente = ClienteFalso()
+        client_mock.return_value = cliente
+
+        resultado, _ = gemini._gerar_estruturado(
+            "prompt",
+            SaidaMinima,
+            100,
+        )
+
+        self.assertEqual(resultado.valor, "ok")
+        self.assertTrue(cliente.closed)
+        client_mock.assert_called_once()
+        config_mock.assert_called_once()
