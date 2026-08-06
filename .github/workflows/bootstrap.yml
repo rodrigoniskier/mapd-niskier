@@ -1,0 +1,23 @@
+name: Bootstrap MAPD Niskier
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Expandir projeto
+        run: python bootstrap_repo.py
+      - name: Publicar arquivos gerados
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: plataforma MAPD Niskier inicial"
+          git push
