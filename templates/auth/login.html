@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Entrar • MAPD Niskier{% endblock %}
+{% block content %}
+<section class="auth-wrap">
+  <div class="auth-card">
+    <p class="eyebrow">Plataforma de estudos</p>
+    <h1>Bem-vindo ao MAPD Niskier</h1>
+    <p class="muted">A partir do segundo acesso, entre com seu RGM e sua senha.</p>
+    <form method="post" class="stack">{% csrf_token %}
+      {% if form.non_field_errors %}<div class="alert error">{{ form.non_field_errors }}</div>{% endif %}
+      <label>RGM{{ form.username }}</label>
+      <label>Senha{{ form.password }}</label>
+      <button class="btn primary full" type="submit">Entrar</button>
+    </form>
+    <div class="divider"><span>primeiro acesso?</span></div>
+    <a class="btn secondary full" href="{% url 'primeiro_acesso' %}">Criar meu acesso</a>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Plataforma de estudos MAPD Niskier">
+  <title>{% block title %}MAPD Niskier{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{% url 'rotear_dashboard' %}">
+      <img src="{% static 'img/logo-unipe.svg' %}" alt="UNIPÊ" class="brand-logo">
+      <span><strong>MAPD</strong><small>IA Niskier</small></span>
+    </a>
+    {% if user.is_authenticated %}
+      <div class="user-menu">
+        <span>{{ user.nome_exibicao }}</span>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+          <button class="link-button" type="submit">Sair</button>
+        </form>
+      </div>
+    {% endif %}
+  </header>
+  <main class="page-shell">
+    {% if messages %}
+      <div class="messages">
+        {% for message in messages %}<div class="alert {{ message.tags }}">{{ message }}</div>{% endfor %}
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer>Desenvolvido por Prof. Rodrigo Niskier Ferreira Barbosa • Medicina</footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

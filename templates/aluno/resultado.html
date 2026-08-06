@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Resultado • MAPD Niskier{% endblock %}
+{% block content %}
+<section class="certificate" id="certificate">
+  <div class="certificate-brand">
+    <img src="{% static 'img/logo-unipe.svg' %}" alt="UNIPÊ">
+    <span>MAPD Niskier</span>
+  </div>
+  <p class="eyebrow">Comprovante de conclusão de atividade formativa</p>
+  <h1>{{ tentativa.aluno.nome_exibicao }}</h1>
+  <p>concluiu a atividade sobre</p>
+  <h2>{{ tentativa.tema.titulo }}</h2>
+  <div class="score-circle"><strong>{{ tentativa.nota_total }}</strong><span>de 10,0</span></div>
+  <div class="certificate-data">
+    <span><strong>RGM</strong>{{ tentativa.aluno.rgm }}</span>
+    <span><strong>Turma</strong>{{ tentativa.aluno.turma.codigo }}</span>
+    <span><strong>Data</strong>{{ tentativa.concluida_em|date:"d/m/Y H:i" }}</span>
+    <span><strong>Pistas usadas</strong>{{ tentativa.quantidade_pistas }}</span>
+  </div>
+  <small>Código de validação: {{ tentativa.codigo_comprovante }}</small>
+  {% if tentativa.status == "REVISAO" %}<div class="notice warning">A resposta discursiva aguarda revisão docente.</div>{% endif %}
+</section>
+<div class="result-actions no-print">
+  <button class="btn secondary" onclick="window.print()">Salvar comprovante em PDF</button>
+  <a class="btn primary" href="{% url 'aluno_dashboard' %}">Voltar aos temas</a>
+  <a class="btn ghost" href="{% url 'feedback' tentativa.pk %}">Ver feedback da avaliação</a>
+</div>
+{% endblock %}

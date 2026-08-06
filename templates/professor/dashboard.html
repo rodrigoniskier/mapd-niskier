@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Dashboard do professor • MAPD Niskier{% endblock %}
+{% block content %}
+<section class="hero compact professor-hero">
+  <div><p class="eyebrow">Painel docente</p><h1>Visão acadêmica MAPD-2</h1><p>Acompanhe turmas, conteúdos, notas e pacotes gerados pela IA.</p></div>
+  <a class="btn light" href="/admin/">Abrir administração completa</a>
+</section>
+<form class="filter-bar" method="get">
+  <label>Turma
+    <select name="turma"><option value="">Todas</option>{% for turma in turmas %}<option value="{{ turma.pk }}" {% if turma_id == turma.pk|stringformat:"s" %}selected{% endif %}>Turma {{ turma.codigo }}</option>{% endfor %}</select>
+  </label>
+  <label>Tema
+    <select name="tema"><option value="">Todos</option>{% for tema in temas %}<option value="{{ tema.pk }}" {% if tema_id == tema.pk|stringformat:"s" %}selected{% endif %}>{{ tema.titulo }}</option>{% endfor %}</select>
+  </label>
+  <button class="btn primary" type="submit">Aplicar filtros</button>
+  <a class="btn ghost" href="{% url 'professor_dashboard' %}">Limpar</a>
+</form>
+<div class="metrics-grid">
+  <div class="metric"><span>Alunos cadastrados</span><strong>{{ metricas.alunos }}</strong></div>
+  <div class="metric"><span>Atividades concluídas</span><strong>{{ metricas.concluidas }}</strong></div>
+  <div class="metric"><span>Média geral</span><strong>{{ metricas.media|default:"—"|floatformat:2 }}</strong></div>
+  <div class="metric"><span>Aguardando revisão</span><strong>{{ metricas.revisao }}</strong></div>
+</div>
+
+<section>
+  <div class="section-head"><h2>Temas e pacotes de estudo</h2><a href="/admin/core/tema/">Editar temas</a></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tema</th><th>Questões</th><th>Aprovadas</th><th>Conclusões</th><th>Média</th><th>Status</th><th>Ações</th></tr></thead>
+      <tbody>
+      {% for tema in temas %}
+        <tr>
+          <td><strong>{{ tema.titulo }}</strong></td>
+          <td>{{ tema.total_questoes }}</td><td>{{ tema.aprovadas }}</td><td>{{ tema.concluidas }}</td>
+          <td>{{ tema.media|default:"—"|floatformat:2 }}</td>
+          <td>{% if tema.pacote_publicado %}<span class="badge success">Publicado</span>{% else %}<span class="badge">Rascunho</span>{% endif %}</td>
+          <td class="actions-cell">
+            <form method="post" action="{% url 'gerar_pacote' tema.pk %}" onsubmit="return confirm('Gerar ou substituir o pacote IA em rascunho?')">{% csrf_token %}<button class="mini-btn">Gerar com IA</button></form>
+            <a class="mini-btn" href="/admin/core/questao/?tema__id__exact={{ tema.pk }}">Revisar</a>
+            <form method="post" action="{% url 'publicar_pacote' tema.pk %}">{% csrf_token %}<button class="mini-btn primary">Publicar</button></form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+
+<section>
+  <div class="section-head"><h2>Médias por aluno</h2><span>Filtrável por turma e tema</span></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Aluno</th><th>RGM</th><th>Turma</th><th>Atividades concluídas</th><th>Média</th></tr></thead>
+      <tbody>
+      {% for aluno in alunos_desempenho %}
+        <tr><td><strong>{{ aluno.nome_exibicao }}</strong></td><td>{{ aluno.rgm }}</td><td>{{ aluno.turma.codigo }}</td><td>{{ aluno.concluidas }}</td><td><strong>{{ aluno.media|default:"—"|floatformat:2 }}</strong></td></tr>
+      {% empty %}<tr><td colspan="5">Nenhum aluno corresponde aos filtros.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Desempenho recente</h2><a href="/admin/core/tentativa/">Ver todos</a></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Aluno</th><th>Turma</th><th>Tema</th><th>Nota</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for t in tentativas %}
+        <tr><td>{{ t.aluno.nome_exibicao }}<small>{{ t.aluno.rgm }}</small></td><td>{{ t.aluno.turma.codigo }}</td><td>{{ t.tema.titulo }}</td><td><strong>{{ t.nota_total }}</strong></td><td>{{ t.get_status_display }}</td><td><a href="{% url 'ajustar_nota' t.pk %}">Editar nota</a></td></tr>
+      {% empty %}<tr><td colspan="6">Nenhuma tentativa registrada.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Cronogramas</h2><a href="/admin/core/aula/">Editar cronogramas</a></div>
+  <div class="class-grid">
+  {% for turma in turmas %}
+    <div class="class-card"><span>Turma</span><strong>{{ turma.codigo }}</strong><p>{{ turma.aulas.count }} entradas • {{ turma.alunos.count }} alunos</p><p>Média: <b>{{ turma.media|default:"—"|floatformat:2 }}</b> • {{ turma.concluidas }} conclusões</p></div>
+  {% endfor %}
+  </div>
+</section>
+{% endblock %}

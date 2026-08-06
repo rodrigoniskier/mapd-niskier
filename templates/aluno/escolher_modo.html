@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ tema.titulo }} • MAPD Niskier{% endblock %}
+{% block content %}
+<a class="back" href="{% url 'aluno_dashboard' %}">← Voltar aos temas</a>
+<section class="hero">
+  <p class="eyebrow">Tema selecionado</p>
+  <h1>{{ tema.titulo }}</h1>
+  <p>Escolha como deseja estudar agora.</p>
+</section>
+<div class="choice-grid">
+  <a class="choice-card" href="{% url 'revisar' tema.slug %}">
+    <span class="choice-icon">✓</span>
+    <h2>Revisar e Testar</h2>
+    <p>Faça uma revisão rápida em até três telas e resolva 9 questões objetivas e 1 discursiva.</p>
+    <span class="btn primary">Começar revisão</span>
+  </a>
+  <a class="choice-card dark" href="{% url 'plantao' tema.slug %}">
+    <span class="choice-icon">✦</span>
+    <h2>Plantão Niskier 24h</h2>
+    <p>Tire dúvidas com a IA Niskier, usando o material autoral e fontes aprovadas.</p>
+    <span class="btn light">Abrir plantão</span>
+  </a>
+</div>
+{% endblock %}

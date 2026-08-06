@@ -1,0 +1,43 @@
+<script>
+(() => {
+  const form = document.querySelector(".chat-form");
+  if (!form) return;
+  const box = document.getElementById("chat-messages");
+  const input = form.querySelector("textarea");
+  const button = form.querySelector("button");
+  const csrf = form.querySelector("[name=csrfmiddlewaretoken]").value;
+  function add(text, kind) {
+    const el = document.createElement("div");
+    el.className = `bubble ${kind}`;
+    el.textContent = text;
+    box.appendChild(el);
+    box.scrollTop = box.scrollHeight;
+  }
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    add(text, "student");
+    input.value = "";
+    button.disabled = true;
+    button.textContent = "Pensando...";
+    const body = new URLSearchParams({mensagem: text, csrfmiddlewaretoken: csrf});
+    try {
+      const response = await fetch(form.dataset.url, {
+        method: "POST", body, headers: {"X-Requested-With": "XMLHttpRequest"}
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.erro || "Falha no chat");
+      add(data.resposta, "ai");
+      if (data.fontes && data.fontes.length) {
+        add("Fontes auditáveis: " + data.fontes.map(f => `${f.titulo} — ${f.url}`).join(" | "), "source");
+      }
+    } catch (err) {
+      add(err.message, "error");
+    } finally {
+      button.disabled = false;
+      button.textContent = "Pedir uma pista";
+    }
+  });
+})();
+</script>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 110" role="img" aria-labelledby="title desc">
+<title id="title">UNIPÊ Centro Universitário de João Pessoa</title>
+<desc id="desc">Identidade visual simplificada para uso acadêmico interno.</desc>
+<g fill="none" stroke="#F3C316" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M45 12 L58 43 L92 45 L66 65 L74 98 L45 79 L16 98 L24 65 L-2 45 L32 43 Z" transform="translate(10 0)"/>
+  <path d="M19 84 L87 20 M20 24 L85 88" opacity=".75"/>
+</g>
+<text x="118" y="52" font-family="Arial,Helvetica,sans-serif" font-size="42" font-weight="800" fill="#0D4E83">UNIPÊ</text>
+<text x="120" y="74" font-family="Arial,Helvetica,sans-serif" font-size="15" fill="#40566B">Centro Universitário</text>
+<text x="120" y="94" font-family="Arial,Helvetica,sans-serif" font-size="15" fill="#40566B">de João Pessoa</text>
+</svg>

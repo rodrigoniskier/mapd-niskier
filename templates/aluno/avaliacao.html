@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Avaliação • {{ tentativa.tema.titulo }}{% endblock %}
+{% block content %}
+<div class="exam-layout">
+  <section class="exam-main">
+    <div class="exam-header">
+      <div><p class="eyebrow">Revisar e Testar</p><h1>{{ tentativa.tema.titulo }}</h1></div>
+      <div class="exam-meta"><strong>10 questões</strong><span>Nota máxima: 10,0</span></div>
+    </div>
+    <div class="notice">Prepare-se para resolver 9 questões objetivas e uma discursiva. Leia cada situação clínica com atenção.</div>
+    <form method="post" action="{% url 'finalizar_avaliacao' tentativa.pk %}" class="question-list" id="exam-form">
+      {% csrf_token %}
+      {% for item in itens %}
+        <article class="question-card">
+          <div class="question-top"><span>Questão {{ item.ordem }}</span><strong>{{ item.valor }} ponto{{ item.valor|pluralize }}</strong></div>
+          <div class="stem">{{ item.questao.enunciado|linebreaks }}</div>
+          {% if item.questao.tipo == "OBJETIVA" %}
+            <div class="alternatives">
+              {% for letra,texto in item.questao.alternativas.items %}
+                <label class="alternative">
+                  <input type="radio" name="q_{{ item.questao.pk }}" value="{{ letra }}">
+                  <span class="letter">{{ letra }}</span><span>{{ texto }}</span>
+                </label>
+              {% endfor %}
+            </div>
+          {% else %}
+            <label class="discursive">
+              <span>Identifique, explique e corrija os erros encontrados:</span>
+              <textarea name="q_{{ item.questao.pk }}" rows="10" placeholder="Escreva sua análise aqui..."></textarea>
+            </label>
+          {% endif %}
+        </article>
+      {% endfor %}
+      <button class="btn success large" type="submit">Finalizar teste</button>
+    </form>
+  </section>
+
+  <aside class="chat-panel" id="chat-panel">
+    <div class="chat-head">
+      <div><span class="ai-dot"></span><strong>IA Niskier</strong></div>
+      <small>Tutora de raciocínio</small>
+    </div>
+    <div class="chat-notice">“Não precisa buscar as respostas em outra IA, cole o enunciado aqui que eu te ajudo a responder.”</div>
+    <div class="chat-messages" id="chat-messages">
+      <div class="bubble ai">Eu não darei a alternativa diretamente. Posso destacar pistas e ajudar você a construir o raciocínio.</div>
+    </div>
+    <form class="chat-form" data-url="{% url 'chat_enviar' sessao.pk %}">
+      {% csrf_token %}
+      {{ chat_form.mensagem }}
+      <button class="btn primary full" type="submit">Pedir uma pista</button>
+    </form>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}{% include "includes/chat_script.html" %}{% endblock %}

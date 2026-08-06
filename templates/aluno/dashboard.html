@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Meus estudos • MAPD Niskier{% endblock %}
+{% block content %}
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">Turma {{ user.turma.codigo }} • {{ user.turma.semestre }}</p>
+    <h1>Olá, {{ user.nome_exibicao }}</h1>
+    <p>Escolha o tema da aula para revisar, testar seus conhecimentos ou conversar com a IA Niskier.</p>
+  </div>
+</section>
+
+<div class="layout-two">
+  <section>
+    <div class="section-head"><h2>Temas das aulas</h2><span>{{ temas|length }} temas</span></div>
+    <div class="card-grid">
+      {% for tema in temas %}
+        <a class="topic-card" href="{{ tema.get_absolute_url }}">
+          <span class="topic-index">{{ forloop.counter|stringformat:"02d" }}</span>
+          <div>
+            <h3>{{ tema.titulo }}</h3>
+            <p>{{ tema.descricao|default:"Revisão e prática orientada." }}</p>
+          </div>
+          <span class="arrow">→</span>
+        </a>
+      {% empty %}
+        <div class="empty-state">Os temas ainda não foram vinculados à sua turma.</div>
+      {% endfor %}
+    </div>
+  </section>
+  <aside class="side-panel">
+    <h2>Seu progresso</h2>
+    {% for tentativa in tentativas %}
+      <a class="progress-row" href="{% url 'resultado' tentativa.pk %}">
+        <span>{{ tentativa.tema.titulo }}</span><strong>{{ tentativa.nota_total }}</strong>
+      </a>
+    {% empty %}
+      <p class="muted">Suas atividades concluídas aparecerão aqui.</p>
+    {% endfor %}
+  </aside>
+</div>
+
+<section class="schedule">
+  <div class="section-head"><h2>Cronograma da turma</h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Data</th><th>Horário</th><th>Conteúdo</th><th>CH</th><th>Local</th></tr></thead>
+      <tbody>
+      {% for aula in aulas %}
+        <tr>
+          <td>{{ aula.data|date:"d/m"|default:"A definir" }}</td>
+          <td>{{ aula.horario }}</td>
+          <td>{{ aula.conteudo }}</td>
+          <td>{{ aula.carga_horaria }}</td>
+          <td>{{ aula.local }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

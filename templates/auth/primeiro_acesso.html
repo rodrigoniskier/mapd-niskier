@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Primeiro acesso • MAPD Niskier{% endblock %}
+{% block content %}
+<section class="auth-wrap">
+  <div class="auth-card wide">
+    <p class="eyebrow">Cadastro do aluno</p>
+    <h1>Primeiro acesso</h1>
+    <p class="muted">Informe seu RGM, nome completo, turma e crie sua senha pessoal.</p>
+    <form method="post" class="form-grid">{% csrf_token %}
+      {% for field in form %}
+        <label>
+          <span>{{ field.label }}</span>
+          {{ field }}
+          {% if field.help_text %}<small>{{ field.help_text|safe }}</small>{% endif %}
+          {% for error in field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+        </label>
+      {% endfor %}
+      <div class="form-actions">
+        <button class="btn primary" type="submit">Criar acesso</button>
+        <a class="btn ghost" href="{% url 'login' %}">Já tenho cadastro</a>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

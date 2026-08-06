@@ -1,0 +1,11 @@
+import os
+import sys
+
+path = "/home/SEU_USUARIO/mapd-niskier"
+if path not in sys.path:
+    sys.path.append(path)
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mapd_niskier.settings")
+
+from django.core.wsgi import get_wsgi_application
+application = get_wsgi_application()

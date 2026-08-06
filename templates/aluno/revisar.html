@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Revisão • {{ tema.titulo }}{% endblock %}
+{% block content %}
+<a class="back" href="{% url 'escolher_modo' tema.slug %}">← Voltar</a>
+<section class="review-shell">
+  <div class="section-head">
+    <div><p class="eyebrow">Revisão rápida</p><h1>{{ tema.titulo }}</h1></div>
+    <span id="slide-counter">1/{{ slides|length }}</span>
+  </div>
+  {% for slide in slides %}
+    <article class="review-slide {% if not forloop.first %}hidden{% endif %}" data-slide="{{ forloop.counter0 }}">
+      <span class="slide-number">{{ forloop.counter|stringformat:"02d" }}</span>
+      <h2>{{ slide.titulo }}</h2>
+      <div class="rich-text">{{ slide.conteudo|linebreaks }}</div>
+    </article>
+  {% empty %}
+    <div class="empty-state">A revisão ainda não foi publicada.</div>
+  {% endfor %}
+  {% if slides %}
+  <div class="review-actions">
+    <button class="btn ghost" id="prev-slide" type="button">Anterior</button>
+    <button class="btn primary" id="next-slide" type="button">Próximo</button>
+    <a class="btn success hidden" id="finish-review" href="{% url 'iniciar_avaliacao' tema.slug %}">Concluído — ir para o teste</a>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const slides = [...document.querySelectorAll(".review-slide")];
+  if (!slides.length) return;
+  let current = 0;
+  const prev = document.getElementById("prev-slide");
+  const next = document.getElementById("next-slide");
+  const finish = document.getElementById("finish-review");
+  const counter = document.getElementById("slide-counter");
+  function render() {
+    slides.forEach((s, i) => s.classList.toggle("hidden", i !== current));
+    prev.disabled = current === 0;
+    next.classList.toggle("hidden", current === slides.length - 1);
+    finish.classList.toggle("hidden", current !== slides.length - 1);
+    counter.textContent = `${current + 1}/${slides.length}`;
+  }
+  prev.addEventListener("click", () => { if (current > 0) current--; render(); });
+  next.addEventListener("click", () => { if (current < slides.length - 1) current++; render(); });
+  render();
+})();
+</script>
+{% endblock %}
