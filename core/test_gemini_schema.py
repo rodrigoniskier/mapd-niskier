@@ -46,6 +46,13 @@ class GeminiSchemaCompatibilidadeTest(SimpleTestCase):
         schema = PacoteEstudoSchema.model_json_schema()
         self.assertFalse(encontrar_chave(schema, "additionalProperties"))
 
+    def test_configuracao_nao_envia_response_schema(self):
+        config = gemini._config_estruturada(100)
+        dados = config.model_dump(exclude_none=True)
+        self.assertNotIn("response_schema", dados)
+        self.assertNotIn("response_json_schema", dados)
+        self.assertEqual(dados.get("response_mime_type"), "application/json")
+
     def test_alternativas_sao_convertidas_para_json_simples(self):
         questao = QuestaoObjetivaSchema(
             enunciado="Caso clínico suficientemente detalhado para avaliar o raciocínio mecanístico do estudante de Medicina." * 2,
@@ -73,6 +80,10 @@ class GeminiSchemaCompatibilidadeTest(SimpleTestCase):
                 "E": "Alternativa E",
             },
         )
+
+    def test_remove_cerca_markdown_de_json(self):
+        texto = '```json\n{"valor":"ok"}\n```'
+        self.assertEqual(gemini._limpar_json_resposta(texto), '{"valor":"ok"}')
 
     @override_settings(GEMINI_MODEL="modelo-teste", GEMINI_FALLBACK_MODEL="")
     @patch("core.services.gemini._config_estruturada", return_value={})
