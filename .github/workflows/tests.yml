@@ -4,23 +4,28 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      DJANGO_SECRET_KEY: ci-secret-key-not-for-production
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      CSRF_TRUSTED_ORIGINS: http://localhost
+      GEMINI_API_KEY: ""
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
           cache: pip
-      - run: pip install -r requirements.txt
-      - run: python manage.py check
-        env:
-          DJANGO_SECRET_KEY: ci-secret-key
-      - run: python manage.py migrate --noinput
-        env:
-          DJANGO_SECRET_KEY: ci-secret-key
-      - run: python manage.py test
-        env:
-          DJANGO_SECRET_KEY: ci-secret-key
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+      - name: Verificar configuração
+        run: python manage.py check
+      - name: Validar migrações
+        run: python manage.py makemigrations --check --dry-run
+      - name: Executar testes
+        run: python manage.py test
