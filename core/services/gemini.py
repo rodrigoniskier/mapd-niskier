@@ -27,7 +27,7 @@ class FonteSchema(BaseModel):
 
 
 class AlternativasSchema(BaseModel):
-    """Objeto fechado para evitar `additionalProperties` no schema enviado ao Gemini."""
+    """Objeto fechado para as cinco alternativas exigidas pela avaliação."""
 
     A: str = Field(min_length=1, max_length=1200)
     B: str = Field(min_length=1, max_length=1200)
@@ -149,24 +149,45 @@ def _gerar_estruturado(prompt, schema, max_tokens, tools=None):
     fallback = getattr(settings, "GEMINI_FALLBACK_MODEL", "")
     if fallback and fallback not in modelos:
         modelos.append(fallback)
+
     ultimo_erro = None
+    tools_atuais = tools
+
     for modelo in modelos:
         for tentativa in range(2):
+            client = None
             try:
-                response = _client().models.generate_content(
+                # O Client precisa permanecer referenciado até a resposta síncrona terminar.
+                # Criá-lo diretamente na expressão pode permitir que o coletor o finalize
+                # cedo demais em algumas versões do google-genai/httpx.
+                client = _client()
+                response = client.models.generate_content(
                     model=modelo,
                     contents=prompt,
-                    config=_config_estruturada(schema, max_tokens, tools=tools),
+                    config=_config_estruturada(schema, max_tokens, tools=tools_atuais),
                 )
                 if not response.text:
                     raise RuntimeError("O Gemini retornou uma resposta vazia.")
-                return schema.model_validate_json(response.text), response
+                resultado = schema.model_validate_json(response.text)
+                return resultado, response
             except Exception as exc:
                 ultimo_erro = exc
-                logger.warning("Falha Gemini modelo=%s tentativa=%s: %s", modelo, tentativa + 1, exc)
+                logger.warning(
+                    "Falha Gemini modelo=%s tentativa=%s: %s",
+                    modelo,
+                    tentativa + 1,
+                    exc,
+                )
                 time.sleep(1 + tentativa)
-                if tools:
-                    tools = None
+                if tools_atuais:
+                    tools_atuais = None
+            finally:
+                if client is not None:
+                    try:
+                        client.close()
+                    except Exception:
+                        logger.debug("Não foi possível fechar o cliente Gemini.", exc_info=True)
+
     raise RuntimeError(f"Não foi possível obter resposta válida do Gemini: {ultimo_erro}")
 
 
