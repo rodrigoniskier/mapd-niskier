@@ -92,8 +92,13 @@ LOGIN_REDIRECT_URL = "rotear_dashboard"
 LOGOUT_REDIRECT_URL = "login"
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
-GEMINI_FALLBACK_MODEL = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash").strip()
+GEMINI_FALLBACK_MODEL = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-3.5-flash-lite").strip()
+
+# Configurações antigas copiadas do .env não devem manter um modelo aposentado.
+if GEMINI_FALLBACK_MODEL in {"gemini-2.5-flash", "models/gemini-2.5-flash"}:
+    GEMINI_FALLBACK_MODEL = "gemini-3.5-flash-lite"
+
 GEMINI_TIMEOUT = int(os.getenv("GEMINI_TIMEOUT", "70"))
 GEMINI_ENABLE_SEARCH = os.getenv("GEMINI_ENABLE_SEARCH", "True").lower() in {"1", "true", "yes", "sim"}
 
