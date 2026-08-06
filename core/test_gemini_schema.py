@@ -5,7 +5,14 @@ from django.test import SimpleTestCase, override_settings
 from pydantic import BaseModel
 
 from core.services import gemini
-from core.services.gemini import AlternativasSchema, PacoteEstudoSchema, QuestaoObjetivaSchema
+from core.services.gemini import (
+    AlternativasSchema,
+    DiscursivasLoteSchema,
+    ObjetivasLoteSchema,
+    PacoteEstudoSchema,
+    QuestaoObjetivaSchema,
+    SlidesLoteSchema,
+)
 
 
 def encontrar_chave(objeto, chave_proibida):
@@ -84,6 +91,15 @@ class GeminiSchemaCompatibilidadeTest(SimpleTestCase):
     def test_remove_cerca_markdown_de_json(self):
         texto = '```json\n{"valor":"ok"}\n```'
         self.assertEqual(gemini._limpar_json_resposta(texto), '{"valor":"ok"}')
+
+    def test_repara_virgula_final_simples(self):
+        resultado = gemini._validar_json_resposta('{"valor":"ok",}', SaidaMinima)
+        self.assertEqual(resultado.valor, "ok")
+
+    def test_lotes_limitam_tamanho_da_resposta(self):
+        self.assertIn("slides", SlidesLoteSchema.model_fields)
+        self.assertIn("objetivas", ObjetivasLoteSchema.model_fields)
+        self.assertIn("discursivas", DiscursivasLoteSchema.model_fields)
 
     @override_settings(GEMINI_MODEL="modelo-teste", GEMINI_FALLBACK_MODEL="")
     @patch("core.services.gemini._config_estruturada", return_value={})
