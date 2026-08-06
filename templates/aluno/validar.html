@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Validar comprovante — MAPD Niskier{% endblock %}
+{% block content %}
+<section class="validation-card"><div class="validation-icon">✓</div><p class="eyebrow">Documento válido</p><h1>Comprovante localizado</h1><dl><div><dt>Aluno</dt><dd>{{ tentativa.aluno.nome_exibicao }}</dd></div><div><dt>RGM</dt><dd>{{ tentativa.aluno.rgm }}</dd></div><div><dt>Turma</dt><dd>{{ tentativa.aluno.turma.codigo }}</dd></div><div><dt>Tema</dt><dd>{{ tentativa.tema.titulo }}</dd></div><div><dt>Nota</dt><dd>{{ tentativa.nota_total }}/10,0</dd></div><div><dt>Conclusão</dt><dd>{{ tentativa.concluida_em|date:"d/m/Y H:i" }}</dd></div></dl><small>Código {{ tentativa.codigo_comprovante }}</small></section>
+{% endblock %}

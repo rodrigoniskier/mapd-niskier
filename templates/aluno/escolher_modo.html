@@ -1,24 +1,10 @@
 {% extends "base.html" %}
-{% block title %}{{ tema.titulo }} • MAPD Niskier{% endblock %}
+{% block title %}{{ tema.titulo }} — MAPD Niskier{% endblock %}
 {% block content %}
-<a class="back" href="{% url 'aluno_dashboard' %}">← Voltar aos temas</a>
-<section class="hero">
-  <p class="eyebrow">Tema selecionado</p>
-  <h1>{{ tema.titulo }}</h1>
-  <p>Escolha como deseja estudar agora.</p>
-</section>
-<div class="choice-grid">
-  <a class="choice-card" href="{% url 'revisar' tema.slug %}">
-    <span class="choice-icon">✓</span>
-    <h2>Revisar e Testar</h2>
-    <p>Faça uma revisão rápida em até três telas e resolva 9 questões objetivas e 1 discursiva.</p>
-    <span class="btn primary">Começar revisão</span>
-  </a>
-  <a class="choice-card dark" href="{% url 'plantao' tema.slug %}">
-    <span class="choice-icon">✦</span>
-    <h2>Plantão Niskier 24h</h2>
-    <p>Tire dúvidas com a IA Niskier, usando o material autoral e fontes aprovadas.</p>
-    <span class="btn light">Abrir plantão</span>
-  </a>
+<header class="page-header"><a class="back-link" href="{% url 'aluno_dashboard' %}">← Meus temas</a><p class="eyebrow">Tema selecionado</p><h1>{{ tema.titulo }}</h1><p>{{ tema.descricao }}</p></header>
+<div class="mode-grid">
+  <a class="mode-card" href="{% url 'revisar' tema.slug %}"><span class="mode-icon">R</span><div><p class="eyebrow">Aprendizagem ativa</p><h2>Revisar e Testar</h2><p>Revise em até 3 telas e resolva 9 questões objetivas e 1 discursiva personalizada.</p><span class="status-pill {% if revisao.concluida %}success{% endif %}">{% if revisao.concluida %}revisão concluída{% else %}começar revisão{% endif %}</span></div></a>
+  <a class="mode-card accent" href="{% url 'plantao' tema.slug %}"><span class="mode-icon">IA</span><div><p class="eyebrow">Tutoria permanente</p><h2>Plantão Niskier 24h</h2><p>Tire dúvidas com base no livro e aprofunde com fontes externas auditáveis.</p><span class="status-pill success">chat disponível</span></div></a>
 </div>
+{% if tentativas %}<section class="section-block"><h2>Suas tentativas</h2><div class="table-wrap"><table><thead><tr><th>Versão</th><th>Status</th><th>Nota</th><th>Pistas</th><th></th></tr></thead><tbody>{% for t in tentativas %}<tr><td>#{{ t.versao }}</td><td>{{ t.get_status_display }}</td><td>{{ t.nota_total }}</td><td>{{ t.quantidade_pistas }}</td><td><a href="{% url 'resultado' t.pk %}">Resultado</a></td></tr>{% endfor %}</tbody></table></div></section>{% endif %}
 {% endblock %}

@@ -1,12 +1,3 @@
 {% extends "base.html" %}
-{% block content %}
-<a class="back" href="{% url 'professor_dashboard' %}">← Voltar</a>
-<section class="auth-wrap">
-  <div class="auth-card wide">
-    <p class="eyebrow">Ajuste auditável</p>
-    <h1>{{ tentativa.aluno.nome_exibicao }}</h1>
-    <p>{{ tentativa.tema.titulo }} • nota atual {{ tentativa.nota_total }}</p>
-    <form method="post" class="stack">{% csrf_token %}{{ form.as_p }}<button class="btn primary" type="submit">Salvar alteração</button></form>
-  </div>
-</section>
-{% endblock %}
+{% block title %}Ajustar nota — MAPD Niskier{% endblock %}
+{% block content %}<header class="page-header"><a class="back-link" href="{% url 'tentativa_detalhe' tentativa.pk %}">← Tentativa</a><p class="eyebrow">Auditoria obrigatória</p><h1>Ajustar nota de {{ tentativa.aluno.nome_exibicao }}</h1><p>{{ tentativa.tema.titulo }} · nota atual {{ tentativa.nota_total }}</p></header><section class="form-panel narrow"><form method="post" class="stack-form">{% csrf_token %}{{ form.as_p }}<button class="primary-btn" type="submit">Registrar ajuste</button></form></section>{% endblock %}

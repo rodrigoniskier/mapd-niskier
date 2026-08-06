@@ -1,25 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Primeiro acesso • MAPD Niskier{% endblock %}
+{% load static %}
+{% block title %}Primeiro acesso — MAPD Niskier{% endblock %}
 {% block content %}
-<section class="auth-wrap">
+<section class="auth-shell compact">
+  <div class="auth-visual">
+    <img src="{% static 'img/logo.svg' %}" alt="MAPD Niskier" class="auth-logo">
+    <h1>Seu RGM será vinculado à sua turma.</h1>
+    <p>Depois do cadastro, os próximos acessos serão feitos somente com RGM e senha.</p>
+  </div>
   <div class="auth-card wide">
-    <p class="eyebrow">Cadastro do aluno</p>
-    <h1>Primeiro acesso</h1>
-    <p class="muted">Informe seu RGM, nome completo, turma e crie sua senha pessoal.</p>
-    <form method="post" class="form-grid">{% csrf_token %}
+    <p class="eyebrow">Cadastro inicial</p><h2>Primeiro acesso</h2>
+    <form method="post" class="stack-form">{% csrf_token %}
       {% for field in form %}
-        <label>
-          <span>{{ field.label }}</span>
-          {{ field }}
-          {% if field.help_text %}<small>{{ field.help_text|safe }}</small>{% endif %}
+        <label class="{% if field.field.widget.input_type == 'checkbox' %}check-label{% endif %}">
+          {{ field.label }}{{ field }}
+          {% if field.help_text %}<small class="help-text">{{ field.help_text|safe }}</small>{% endif %}
           {% for error in field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
         </label>
       {% endfor %}
-      <div class="form-actions">
-        <button class="btn primary" type="submit">Criar acesso</button>
-        <a class="btn ghost" href="{% url 'login' %}">Já tenho cadastro</a>
-      </div>
+      <div class="terms-box">{{ configuracao.termos_primeiro_acesso }}</div>
+      <button class="primary-btn" type="submit">Criar meu acesso</button>
     </form>
+    <a class="text-link" href="{% url 'login' %}">Já tenho cadastro</a>
   </div>
 </section>
 {% endblock %}

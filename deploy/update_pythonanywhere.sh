@@ -4,14 +4,16 @@ set -euo pipefail
 PROJECT_DIR="${PROJECT_DIR:-$HOME/mapd-niskier}"
 VENV_DIR="${VENV_DIR:-$HOME/.virtualenvs/mapd-niskier}"
 
-if [[ ! -x "$VENV_DIR/bin/python" ]]; then
-  python3.13 -m venv "$VENV_DIR"
-fi
-source "$VENV_DIR/bin/activate"
 cd "$PROJECT_DIR"
+if [[ ! -x "$VENV_DIR/bin/python" ]]; then
+  echo "Virtualenv não encontrado em $VENV_DIR"
+  echo "Crie-o com: mkvirtualenv mapd-niskier --python=/usr/local/bin/python3.13"
+  exit 1
+fi
+
+source "$VENV_DIR/bin/activate"
 python -m pip install --upgrade pip
 pip install -r requirements.txt
-cp -n .env.example .env || true
 python manage.py migrate
 python manage.py seed_cronogramas
 python manage.py preparar_plataforma
@@ -19,4 +21,4 @@ python manage.py collectstatic --noinput
 python manage.py check
 python manage.py test
 
-echo "Instalação concluída. Edite .env, crie o superusuário e configure o WSGI."
+echo "Atualização concluída. Recarregue a aplicação na aba Web do PythonAnywhere."

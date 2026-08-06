@@ -1,25 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Plantão Niskier • {{ tema.titulo }}{% endblock %}
+{% load static %}
+{% block title %}Plantão Niskier — {{ tema.titulo }}{% endblock %}
 {% block content %}
-<a class="back" href="{% url 'escolher_modo' tema.slug %}">← Voltar ao tema</a>
-<div class="plantao-shell">
-  <header class="plantao-head">
-    <div><p class="eyebrow">Plantão Niskier 24h</p><h1>{{ tema.titulo }}</h1></div>
-    <span class="status-pill"><i></i> IA disponível</span>
-  </header>
-  <div class="plantao-chat">
-    <div class="chat-messages large" id="chat-messages">
-      <div class="bubble ai">Olá. Traga sua dúvida e eu vou ajudar a conectar mecanismo, evidência e raciocínio clínico.</div>
-      {% for mensagem in mensagens %}
-        <div class="bubble {% if mensagem.autor == 'ALUNO' %}student{% else %}ai{% endif %}">{{ mensagem.texto }}</div>
-        {% if mensagem.fontes %}<div class="bubble source">Fontes: {% for f in mensagem.fontes %}{{ f.titulo }} — {{ f.url }}{% if not forloop.last %} | {% endif %}{% endfor %}</div>{% endif %}
-      {% endfor %}
-    </div>
-    <form class="chat-form" data-url="{% url 'chat_enviar' sessao.pk %}">
-      {% csrf_token %}{{ form.mensagem }}
-      <button class="btn primary" type="submit">Enviar dúvida</button>
-    </form>
-  </div>
+<div class="plantao-layout">
+  <header class="page-header"><a class="back-link" href="{% url 'escolher_modo' tema.slug %}">← Voltar ao tema</a><p class="eyebrow">Plantão Niskier 24h</p><h1>{{ tema.titulo }}</h1><p>As respostas priorizam o material do curso. Fontes externas aparecem com URL e resumo para auditoria.</p></header>
+  <section class="chat-room" data-chat-url="{% url 'chat_enviar' sessao.pk %}">
+    <div class="chat-messages large" data-chat-messages>{% for msg in mensagens %}<div class="message {% if msg.autor == 'ALUNO' %}student{% else %}ai{% endif %}">{{ msg.texto|linebreaksbr }}{% if msg.fontes %}<div class="source-list">{% for fonte in msg.fontes %}<a href="{{ fonte.url }}" target="_blank" rel="noopener"><strong>{{ fonte.titulo }}</strong><small>{{ fonte.resumo }}</small></a>{% endfor %}</div>{% endif %}</div>{% empty %}<div class="message ai">Olá. Traga uma dúvida conceitual, um caso clínico ou um mecanismo que queira aprofundar.</div>{% endfor %}</div>
+    <form class="chat-form horizontal" data-chat-form>{% csrf_token %}<textarea name="mensagem" rows="3" maxlength="4000" placeholder="Pergunte à IA Niskier..."></textarea><button class="primary-btn" type="submit">Enviar</button></form>
+  </section>
 </div>
 {% endblock %}
-{% block scripts %}{% include "includes/chat_script.html" %}{% endblock %}
+{% block scripts %}<script src="{% static 'js/chat.js' %}"></script>{% endblock %}

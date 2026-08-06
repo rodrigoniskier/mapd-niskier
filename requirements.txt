@@ -1,7 +1,9 @@
 Django==5.2.16
-google-genai>=1.38.0,<2
+google-genai>=1.75.0,<2
 python-dotenv>=1.0.1,<2
 pydantic>=2.8,<3
 requests>=2.32,<3
 beautifulsoup4>=4.12,<5
 whitenoise>=6.8,<7
+qrcode[pil]>=8.0,<9
+reportlab>=4.2,<5

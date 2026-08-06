@@ -1,55 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Avaliação • {{ tentativa.tema.titulo }}{% endblock %}
+{% load static %}
+{% block title %}Avaliação — {{ tentativa.tema.titulo }}{% endblock %}
 {% block content %}
-<div class="exam-layout">
-  <section class="exam-main">
-    <div class="exam-header">
-      <div><p class="eyebrow">Revisar e Testar</p><h1>{{ tentativa.tema.titulo }}</h1></div>
-      <div class="exam-meta"><strong>10 questões</strong><span>Nota máxima: 10,0</span></div>
-    </div>
-    <div class="notice">Prepare-se para resolver 9 questões objetivas e uma discursiva. Leia cada situação clínica com atenção.</div>
-    <form method="post" action="{% url 'finalizar_avaliacao' tentativa.pk %}" class="question-list" id="exam-form">
-      {% csrf_token %}
-      {% for item in itens %}
-        <article class="question-card">
-          <div class="question-top"><span>Questão {{ item.ordem }}</span><strong>{{ item.valor }} ponto{{ item.valor|pluralize }}</strong></div>
-          <div class="stem">{{ item.questao.enunciado|linebreaks }}</div>
-          {% if item.questao.tipo == "OBJETIVA" %}
-            <div class="alternatives">
-              {% for letra,texto in item.questao.alternativas.items %}
-                <label class="alternative">
-                  <input type="radio" name="q_{{ item.questao.pk }}" value="{{ letra }}">
-                  <span class="letter">{{ letra }}</span><span>{{ texto }}</span>
-                </label>
-              {% endfor %}
-            </div>
-          {% else %}
-            <label class="discursive">
-              <span>Identifique, explique e corrija os erros encontrados:</span>
-              <textarea name="q_{{ item.questao.pk }}" rows="10" placeholder="Escreva sua análise aqui..."></textarea>
-            </label>
-          {% endif %}
-        </article>
-      {% endfor %}
-      <button class="btn success large" type="submit">Finalizar teste</button>
+<div class="assessment-layout">
+  <section class="assessment-main">
+    <header class="assessment-header"><div><p class="eyebrow">Atividade personalizada · nível {{ tentativa.nivel_adaptativo }}</p><h1>{{ tentativa.tema.titulo }}</h1></div><div class="assessment-progress"><span data-answer-count>0</span>/10 respondidas</div></header>
+    <form action="{% url 'finalizar_avaliacao' tentativa.pk %}" method="post" id="assessment-form" data-autosave-url="{% url 'salvar_resposta' tentativa.pk %}">{% csrf_token %}
+      {% for linha in itens %}{% with item=linha.item q=linha.item.questao r=linha.resposta %}
+      <article class="question-card" id="questao-{{ q.pk }}" data-question data-question-id="{{ q.pk }}" data-order="{{ item.ordem }}">
+        <div class="question-top"><span class="question-number">Questão {{ item.ordem }}</span><span class="status-pill">{{ q.dificuldade }}</span><button type="button" class="ghost-btn ask-question" data-ask-question="{{ q.pk }}">Pedir uma pista</button></div>
+        <div class="question-text">{{ q.enunciado|linebreaks }}</div>
+        {% if q.tipo == 'OBJETIVA' %}<div class="alternatives">
+          {% for letra,texto in q.alternativas.items %}<label class="alternative"><input type="radio" name="q_{{ q.pk }}" value="{{ letra }}" {% if r.alternativa_marcada == letra %}checked{% endif %}><span class="letter">{{ letra }}</span><span>{{ texto }}</span></label>{% endfor %}
+        </div>{% else %}<div class="discursive-callout"><strong>Sua tarefa:</strong> identifique os erros, explique por que estão errados e apresente a formulação correta.</div><textarea class="form-control discursive-answer" name="q_{{ q.pk }}" rows="10" maxlength="12000" placeholder="Escreva sua análise aqui...">{{ r.resposta_textual|default:"" }}</textarea>{% endif %}
+        <div class="save-state" data-save-state>Não salvo</div>
+      </article>
+      {% endwith %}{% endfor %}
+      <div class="submit-panel"><div><strong>Revise antes de finalizar.</strong><p>Após o envio, as respostas não poderão ser alteradas.</p></div><button class="primary-btn large" type="submit" data-finalize>Finalizar avaliação</button></div>
     </form>
   </section>
-
-  <aside class="chat-panel" id="chat-panel">
-    <div class="chat-head">
-      <div><span class="ai-dot"></span><strong>IA Niskier</strong></div>
-      <small>Tutora de raciocínio</small>
-    </div>
-    <div class="chat-notice">“Não precisa buscar as respostas em outra IA, cole o enunciado aqui que eu te ajudo a responder.”</div>
-    <div class="chat-messages" id="chat-messages">
-      <div class="bubble ai">Eu não darei a alternativa diretamente. Posso destacar pistas e ajudar você a construir o raciocínio.</div>
-    </div>
-    <form class="chat-form" data-url="{% url 'chat_enviar' sessao.pk %}">
-      {% csrf_token %}
-      {{ chat_form.mensagem }}
-      <button class="btn primary full" type="submit">Pedir uma pista</button>
-    </form>
+  <aside class="chat-panel" id="question-chat" data-chat-url="{% url 'chat_enviar' sessao.pk %}">
+    <div class="chat-header"><div><p class="eyebrow">Tutor socrático</p><h2>IA Niskier</h2></div><span class="online-dot">online</span></div>
+    <div class="chat-notice">{{ aviso }}</div>
+    <div class="hint-levels"><button type="button" class="hint-chip active" data-hint-level="1">Pista 1</button><button type="button" class="hint-chip" data-hint-level="2">Pista 2</button><button type="button" class="hint-chip" data-hint-level="3">Pista 3</button></div>
+    <div class="chat-context" data-chat-context>Nenhuma questão selecionada. Clique em “Pedir uma pista”.</div>
+    <div class="chat-messages" data-chat-messages><div class="message ai">Eu não entregarei a alternativa correta. Vou ajudá-lo a organizar os dados e testar seu raciocínio.</div></div>
+    <form class="chat-form" data-chat-form>{% csrf_token %}<input type="hidden" name="questao_id" data-chat-question><input type="hidden" name="nivel_pista" value="1" data-chat-level><textarea name="mensagem" rows="3" maxlength="4000" placeholder="Explique onde está sua dúvida..."></textarea><button class="primary-btn" type="submit">Enviar</button></form>
   </aside>
 </div>
 {% endblock %}
-{% block scripts %}{% include "includes/chat_script.html" %}{% endblock %}
+{% block scripts %}<script src="{% static 'js/chat.js' %}"></script><script src="{% static 'js/avaliacao.js' %}"></script>{% endblock %}

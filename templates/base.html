@@ -1,37 +1,57 @@
 {% load static %}
 <!doctype html>
-<html lang="pt-br">
+<html lang="pt-BR" data-theme="light">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173b65">
   <meta name="description" content="Plataforma de estudos MAPD Niskier">
   <title>{% block title %}MAPD Niskier{% endblock %}</title>
+  <link rel="icon" href="{% static 'img/icon.svg' %}" type="image/svg+xml">
+  <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block head %}{% endblock %}
 </head>
-<body>
-  <header class="topbar">
-    <a class="brand" href="{% url 'rotear_dashboard' %}">
-      <img src="{% static 'img/logo-unipe.svg' %}" alt="UNIPÊ" class="brand-logo">
-      <span><strong>MAPD</strong><small>IA Niskier</small></span>
+<body class="{% if not user.is_authenticated %}auth-page{% endif %}">
+  {% if user.is_authenticated %}
+  <aside class="sidebar" id="sidebar">
+    <a href="{% url 'rotear_dashboard' %}" class="brand">
+      <img src="{% static 'img/logo.svg' %}" alt="MAPD Niskier">
     </a>
-    {% if user.is_authenticated %}
-      <div class="user-menu">
-        <span>{{ user.nome_exibicao }}</span>
-        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
-          <button class="link-button" type="submit">Sair</button>
-        </form>
+    <nav class="nav-list" aria-label="Navegação principal">
+      {% if user.e_professor %}
+        <a href="{% url 'professor_dashboard' %}" class="nav-item">Visão geral</a>
+        <a href="{% url 'tema_novo' %}" class="nav-item">Novo tema</a>
+        <a href="{% url 'aula_nova' %}" class="nav-item">Cronograma</a>
+        <a href="{% url 'professor_fontes' %}" class="nav-item">Fontes e auditoria</a>
+        <a href="{% url 'relatorios' %}" class="nav-item">Relatórios</a>
+        <a href="{% url 'admin:index' %}" class="nav-item">Admin avançado</a>
+      {% else %}
+        <a href="{% url 'aluno_dashboard' %}" class="nav-item">Meus temas</a>
+      {% endif %}
+    </nav>
+    <div class="sidebar-footer">
+      <button class="ghost-btn full" type="button" data-theme-toggle>Alternar tema</button>
+      <div class="user-chip">
+        <span class="avatar">{{ user.nome_exibicao|first|upper }}</span>
+        <span><strong>{{ user.nome_exibicao }}</strong><small>{% if user.turma %}Turma {{ user.turma.codigo }}{% else %}Professor{% endif %}</small></span>
       </div>
-    {% endif %}
-  </header>
-  <main class="page-shell">
+      <form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="ghost-btn full" type="submit">Sair</button></form>
+    </div>
+  </aside>
+  <button class="mobile-menu" type="button" data-sidebar-toggle aria-label="Abrir menu">☰</button>
+  {% endif %}
+
+  <main class="{% if user.is_authenticated %}app-main{% else %}auth-main{% endif %}">
     {% if messages %}
-      <div class="messages">
-        {% for message in messages %}<div class="alert {{ message.tags }}">{{ message }}</div>{% endfor %}
+      <div class="messages" aria-live="polite">
+      {% for message in messages %}<div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}
       </div>
     {% endif %}
     {% block content %}{% endblock %}
   </main>
-  <footer>Desenvolvido por Prof. Rodrigo Niskier Ferreira Barbosa • Medicina</footer>
+
+  <script src="{% static 'js/app.js' %}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

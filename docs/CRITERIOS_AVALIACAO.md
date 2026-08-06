@@ -1,20 +1,23 @@
-# Critérios de elaboração e revisão das atividades
+# Critérios de avaliação e geração de itens
 
-Os itens gerados devem ser contextualizados e compatíveis com os processos de aprendizagem. A avaliação formativa deve produzir feedback construtivo durante o processo de ensino-aprendizagem.
+A plataforma adota avaliação formativa contínua, feedback construtivo e itens contextualizados. O Manual de Avaliação de Aprendizagem do Curso de Medicina do UNIPÊ admite questões dissertativas e de múltipla escolha, desde que contextualizadas e compatíveis com os processos de aprendizagem, e define o feedback como finalidade central da avaliação formativa.
 
-Para as questões objetivas:
+## Rubrica técnica das questões objetivas
 
-- situação clínica ou problema relevante;
-- comando claro e único;
-- cinco alternativas homogêneas;
-- uma única resposta defensável;
-- ausência de pistas gramaticais e negativas desnecessárias;
-- justificativa do gabarito e dos distratores;
-- equilíbrio entre níveis básico, intermediário e avançado.
+- cenário clínico ou situação-problema relevante;
+- comando claro, positivo e com uma única tarefa cognitiva;
+- cinco alternativas homogêneas e plausíveis;
+- apenas uma alternativa defensável;
+- ausência de pistas gramaticais, absolutismos e pegadinhas;
+- integração entre mecanismo, evidência diagnóstica e decisão clínica;
+- justificativa do gabarito e referências auditáveis;
+- classificação por dificuldade, habilidade e nível cognitivo.
 
-Para a discursiva:
+## Rubrica da questão discursiva
 
-- resumo clínico com erros conceituais discretos;
-- identificação, explicação e correção dos erros;
-- integração entre mecanismo e repercussão clínica;
-- correção por rubrica e possibilidade de revisão docente.
+- identificação dos erros: 35%;
+- explicação do motivo: 25%;
+- correção conceitual: 25%;
+- integração clínico-mecanística e clareza: 15%.
+
+A correção por IA é preliminar. Respostas ambíguas ou de baixa confiança são encaminhadas para revisão docente.

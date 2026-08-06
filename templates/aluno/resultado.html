@@ -1,29 +1,11 @@
 {% extends "base.html" %}
-{% load static %}
-{% block title %}Resultado • MAPD Niskier{% endblock %}
+{% block title %}Resultado — {{ tentativa.tema.titulo }}{% endblock %}
 {% block content %}
-<section class="certificate" id="certificate">
-  <div class="certificate-brand">
-    <img src="{% static 'img/logo-unipe.svg' %}" alt="UNIPÊ">
-    <span>MAPD Niskier</span>
-  </div>
-  <p class="eyebrow">Comprovante de conclusão de atividade formativa</p>
-  <h1>{{ tentativa.aluno.nome_exibicao }}</h1>
-  <p>concluiu a atividade sobre</p>
-  <h2>{{ tentativa.tema.titulo }}</h2>
-  <div class="score-circle"><strong>{{ tentativa.nota_total }}</strong><span>de 10,0</span></div>
-  <div class="certificate-data">
-    <span><strong>RGM</strong>{{ tentativa.aluno.rgm }}</span>
-    <span><strong>Turma</strong>{{ tentativa.aluno.turma.codigo }}</span>
-    <span><strong>Data</strong>{{ tentativa.concluida_em|date:"d/m/Y H:i" }}</span>
-    <span><strong>Pistas usadas</strong>{{ tentativa.quantidade_pistas }}</span>
-  </div>
-  <small>Código de validação: {{ tentativa.codigo_comprovante }}</small>
-  {% if tentativa.status == "REVISAO" %}<div class="notice warning">A resposta discursiva aguarda revisão docente.</div>{% endif %}
-</section>
-<div class="result-actions no-print">
-  <button class="btn secondary" onclick="window.print()">Salvar comprovante em PDF</button>
-  <a class="btn primary" href="{% url 'aluno_dashboard' %}">Voltar aos temas</a>
-  <a class="btn ghost" href="{% url 'feedback' tentativa.pk %}">Ver feedback da avaliação</a>
+<header class="page-header centered"><p class="eyebrow">Atividade concluída</p><h1>Seu resultado está pronto.</h1><p>{{ tentativa.tema.titulo }}</p></header>
+<div class="result-grid">
+  <section class="score-card"><span class="score-label">Nota final</span><strong class="score-value">{{ tentativa.nota_total }}</strong><span>/ 10,0</span><div class="score-breakdown"><div><strong>{{ tentativa.nota_objetiva }}</strong><span>objetivas</span></div><div><strong>{{ tentativa.nota_discursiva }}</strong><span>discursiva</span></div><div><strong>{{ tentativa.quantidade_pistas }}</strong><span>pistas</span></div></div><span class="status-pill {% if tentativa.aprovado %}success{% else %}pending{% endif %}">{% if tentativa.aprovado %}meta alcançada{% else %}revisão recomendada{% endif %}</span></section>
+  <section class="certificate-card"><div><p class="eyebrow">Comprovante de conclusão</p><h2>{{ tentativa.aluno.nome_exibicao }}</h2><p>RGM {{ tentativa.aluno.rgm }} · Turma {{ tentativa.aluno.turma.codigo }}</p><p>Concluiu a atividade formativa com nota <strong>{{ tentativa.nota_total }}</strong>.</p><small>Código: {{ tentativa.codigo_comprovante }}</small></div>{% if qr_data_uri %}<img src="{{ qr_data_uri }}" alt="QR Code de validação">{% endif %}</section>
 </div>
+<div class="action-row"><a class="primary-btn" href="{% url 'feedback' tentativa.pk %}">Ver feedback detalhado</a><a class="secondary-btn" href="{% url 'certificado_pdf' tentativa.pk %}">Salvar comprovante em PDF</a><a class="ghost-btn" href="{% url 'aluno_dashboard' %}">Voltar aos temas</a></div>
+{% if tentativa.status == 'REVISAO' %}<div class="alert alert-warning">A correção da questão discursiva foi marcada para revisão docente. A nota poderá ser atualizada pelo professor.</div>{% endif %}
 {% endblock %}

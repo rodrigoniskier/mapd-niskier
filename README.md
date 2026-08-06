@@ -1,72 +1,101 @@
 # MAPD Niskier — Plataforma de Estudos
 
-Plataforma Django para revisão, avaliação formativa e tutoria por IA em **Mecanismos de Agressão, Patológicos e de Defesa 2**.
+Plataforma Django para revisão, avaliação formativa personalizada e tutoria por IA em **Mecanismos de Agressão, Patológicos e de Defesa 2**.
 
-## Estado do projeto
+## Entrega funcional
 
-MVP funcional com:
+### Área do aluno
 
-- cadastro no primeiro acesso por **RGM + nome + turma + senha**;
-- login posterior por **RGM + senha**;
-- dashboards separados para aluno e professor;
-- cronogramas das turmas A, B e C de 2026/2;
-- revisão rápida em até 3 telas;
-- avaliação com 9 questões objetivas e 1 discursiva;
-- tutoria lateral “IA Niskier” sem entrega direta da resposta;
-- Plantão Niskier 24h;
-- correção, nota, feedback e comprovante imprimível;
-- integração opcional com a API Gemini;
-- Django Admin para editar turmas, temas, questões, notas e fontes.
+- primeiro acesso com **RGM + nome + turma + senha**;
+- vínculo permanente do RGM com a turma;
+- código de ingresso opcional por turma;
+- login posterior com RGM e senha;
+- temas liberados conforme o cronograma da turma;
+- revisão em carrossel com até três telas;
+- avaliação personalizada com **9 objetivas + 1 discursiva**;
+- seleção adaptativa por histórico e dificuldade;
+- salvamento automático das respostas;
+- chat lateral com pistas graduais, sem revelar diretamente o gabarito;
+- Plantão Niskier 24h com fontes e URLs auditáveis;
+- resultado, feedback individual, comprovante em PDF e validação por QR Code;
+- interface responsiva, modo escuro e PWA.
 
-## Instalação rápida no PythonAnywhere
+### Área do professor
+
+- visão geral por turma, tema e aluno;
+- médias, conclusões, tentativas em revisão e gráficos;
+- gestão de temas, cronogramas, alunos, slides, questões e fontes;
+- geração de pacote com Gemini: 3 telas, 15 objetivas e 2 discursivas;
+- aprovação individual ou em lote e publicação controlada;
+- correção discursiva preliminar por IA com sinalização para revisão docente;
+- edição de notas com histórico obrigatório de auditoria;
+- relatórios filtráveis, CSV e PDF;
+- painel avançado do Django Admin.
+
+### IA e auditoria
+
+- modelo principal configurável por `.env`;
+- modelo de fallback;
+- respostas estruturadas por Pydantic;
+- contexto de URL para fontes aprovadas;
+- Pesquisa Google opcional no Plantão para aprofundamento;
+- armazenamento de título, URL e resumo das fontes usadas;
+- respostas determinísticas de contingência quando a API estiver indisponível.
+
+## Atualização definitiva no PythonAnywhere
 
 No Bash:
 
 ```bash
-git clone https://github.com/rodrigoniskier/mapd-niskier.git
-cd mapd-niskier
+cd ~/mapd-niskier
+rm -f core/migrations/0002_alter_usuario_options.py
+git reset --hard HEAD
+git pull origin main
 
-python3.10 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-cp .env.example .env
-nano .env
+workon mapd-niskier
+bash deploy/update_pythonanywhere.sh
 ```
 
-Preencha, no mínimo:
+O script executa:
+
+```text
+instalação/atualização das dependências
+migrações
+carga dos cronogramas A, B e C
+configuração inicial e fonte principal
+collectstatic
+check
+testes automatizados
+```
+
+Depois, na aba **Web**, clique em **Reload**.
+
+## Configuração do `.env`
 
 ```env
-DJANGO_SECRET_KEY=uma-chave-longa-e-secreta
+DJANGO_SECRET_KEY=uma-chave-longa-e-aleatoria
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=SEU_USUARIO.pythonanywhere.com
-CSRF_TRUSTED_ORIGINS=https://SEU_USUARIO.pythonanywhere.com
+DJANGO_ALLOWED_HOSTS=mapdniskier.pythonanywhere.com
+CSRF_TRUSTED_ORIGINS=https://mapdniskier.pythonanywhere.com
+
 GEMINI_API_KEY=SUA_CHAVE
+GEMINI_MODEL=gemini-3.6-flash
+GEMINI_FALLBACK_MODEL=gemini-2.5-flash
+GEMINI_TIMEOUT=70
+GEMINI_ENABLE_SEARCH=True
 ```
 
-Prepare o banco:
+Nunca envie o arquivo `.env` ao GitHub.
 
-```bash
-python manage.py migrate
-python manage.py seed_cronogramas
-python manage.py createsuperuser
-python manage.py collectstatic --noinput
-```
-
-No painel **Web** do PythonAnywhere:
-
-1. Crie uma nova aplicação manual.
-2. Selecione Python 3.10.
-3. Informe o caminho do virtualenv: `/home/SEU_USUARIO/mapd-niskier/.venv`.
-4. Configure o arquivo WSGI:
+## WSGI no PythonAnywhere
 
 ```python
 import os
 import sys
 
-path = "/home/SEU_USUARIO/mapd-niskier"
+path = "/home/mapdniskier/mapd-niskier"
 if path not in sys.path:
-    sys.path.append(path)
+    sys.path.insert(0, path)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mapd_niskier.settings")
 
@@ -74,57 +103,71 @@ from django.core.wsgi import get_wsgi_application
 application = get_wsgi_application()
 ```
 
-5. Em **Static files**, configure:
-   - URL: `/static/`
-   - Directory: `/home/SEU_USUARIO/mapd-niskier/staticfiles`
-6. Recarregue a aplicação.
+Virtualenv:
 
-## Fluxo inicial recomendado
+```text
+/home/mapdniskier/.virtualenvs/mapd-niskier
+```
 
-1. Entre em `/admin/` com o superusuário.
-2. Confirme os cronogramas e temas.
-3. No dashboard do professor, clique em **Gerar pacote com IA** para cada tema.
-4. Revise as questões no Django Admin.
-5. Publique o pacote para liberar aos alunos.
+Static files:
 
-Sem `GEMINI_API_KEY`, a plataforma continua funcionando para cadastro, cronogramas, edição manual e avaliações já cadastradas.
+```text
+URL: /static/
+Directory: /home/mapdniskier/mapd-niskier/staticfiles
+```
 
-## Atualização futura
+## Acessos
 
-Depois do primeiro clone:
+- aplicação: `https://mapdniskier.pythonanywhere.com/`
+- professor: o login redireciona automaticamente para `/professor/`;
+- administração avançada: `/admin/`;
+- primeiro acesso do aluno: `/primeiro-acesso/`.
+
+O formulário aceita o username administrativo sem alterar maiúsculas/minúsculas e aceita o RGM normalizado dos alunos.
+
+## Primeira preparação do conteúdo
+
+1. Acesse **Fontes e auditoria** e confira a fonte principal.
+2. Importe o texto público, quando possível, ou mantenha o contexto por URL.
+3. Abra cada tema e clique em **Gerar pacote completo com Gemini**.
+4. Revise amostras, edite o necessário e aprove as questões.
+5. Publique o pacote.
+
+Para gerar rascunhos pelo Bash:
 
 ```bash
+workon mapd-niskier
 cd ~/mapd-niskier
-git pull
-source .venv/bin/activate
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py collectstatic --noinput
+python manage.py gerar_todos_pacotes --substituir
 ```
 
-## Fonte principal
+A geração em lote pode consumir cota da API. O fluxo pelo painel permite revisar um tema por vez.
 
-A base indicada no projeto é:
+## Segurança e LGPD
 
-- https://mecanismos-medicos-rn-2026.rodrigoniskier.chatgpt.site/
+- senhas armazenadas pelo mecanismo de hash do Django;
+- chave Gemini usada somente no servidor;
+- separação de permissões entre aluno e professor;
+- aluno não altera a própria turma;
+- acesso a temas limitado à turma vinculada;
+- logs acadêmicos usam o RGM apenas quando necessário;
+- notas alteradas ficam registradas com professor, data e justificativa;
+- respostas externas da IA mantêm fontes para auditoria;
+- o documento emitido é um **comprovante de atividade formativa**, não um certificado institucional oficial.
 
-O comando abaixo importa texto público de uma URL para a base auditável:
+## Identidade visual
+
+O repositório inclui uma marca tipográfica própria “MAPD Niskier — Medicina • UNIPÊ”. Ela não substitui o arquivo oficial de identidade visual da instituição. Um arquivo oficial autorizado pode substituir `static/img/logo.svg` sem alterar os templates.
+
+## Testes
 
 ```bash
-python manage.py importar_fonte_url "https://mecanismos-medicos-rn-2026.rodrigoniskier.chatgpt.site/"
+python manage.py check
+python manage.py test
 ```
 
-A importação automática deve ser conferida pelo professor, especialmente quando a página usar carregamento dinâmico.
+Os testes cobrem cadastro e vínculo de turma, código de ingresso, isolamento entre turmas, montagem 9+1, conclusão sem API, dashboard docente e edição de tema.
 
-## Segurança
+## Autoria
 
-- Nunca envie `.env` ao GitHub.
-- A chave Gemini é usada apenas no servidor.
-- Senhas são armazenadas pelo mecanismo seguro do Django.
-- Alunos são identificados pelo RGM.
-- Alterações de nota ficam registradas no banco.
-- O comprovante é uma evidência de realização da atividade, não um certificado institucional oficial.
-
-## Licença e autoria
-
-Código privado. Desenvolvido por **Prof. Rodrigo Niskier Ferreira Barbosa**.
+Desenvolvido para o **Prof. Rodrigo Niskier Ferreira Barbosa**. Repositório privado.

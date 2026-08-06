@@ -1,19 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Entrar • MAPD Niskier{% endblock %}
+{% load static %}
+{% block title %}Entrar — MAPD Niskier{% endblock %}
 {% block content %}
-<section class="auth-wrap">
+<section class="auth-shell">
+  <div class="auth-visual">
+    <img src="{% static 'img/logo.svg' %}" alt="MAPD Niskier" class="auth-logo">
+    <h1>Estude mecanismos.<br>Raciocine clinicamente.</h1>
+    <p>Revisão rápida, avaliação formativa personalizada e Plantão Niskier 24h.</p>
+    <div class="medical-grid" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  </div>
   <div class="auth-card">
-    <p class="eyebrow">Plataforma de estudos</p>
-    <h1>Bem-vindo ao MAPD Niskier</h1>
-    <p class="muted">A partir do segundo acesso, entre com seu RGM e sua senha.</p>
-    <form method="post" class="stack">{% csrf_token %}
-      {% if form.non_field_errors %}<div class="alert error">{{ form.non_field_errors }}</div>{% endif %}
-      <label>RGM{{ form.username }}</label>
-      <label>Senha{{ form.password }}</label>
-      <button class="btn primary full" type="submit">Entrar</button>
+    <p class="eyebrow">Área do aluno e professor</p>
+    <h2>Entrar</h2>
+    <p class="muted">Alunos entram com RGM e senha. Professores usam o usuário administrativo.</p>
+    <form method="post" class="stack-form">{% csrf_token %}
+      {% if form.non_field_errors %}<div class="field-error">{{ form.non_field_errors }}</div>{% endif %}
+      {% for field in form %}
+        <label>{{ field.label }}{{ field }}{% for error in field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
+      {% endfor %}
+      <button class="primary-btn" type="submit">Entrar na plataforma</button>
     </form>
-    <div class="divider"><span>primeiro acesso?</span></div>
-    <a class="btn secondary full" href="{% url 'primeiro_acesso' %}">Criar meu acesso</a>
+    <div class="auth-divider"><span>primeiro acesso?</span></div>
+    <a class="secondary-btn" href="{% url 'primeiro_acesso' %}">Cadastrar RGM e vincular turma</a>
   </div>
 </section>
 {% endblock %}

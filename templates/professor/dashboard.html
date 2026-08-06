@@ -1,86 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Dashboard do professor • MAPD Niskier{% endblock %}
+{% block title %}Painel do professor — MAPD Niskier{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>{% endblock %}
 {% block content %}
-<section class="hero compact professor-hero">
-  <div><p class="eyebrow">Painel docente</p><h1>Visão acadêmica MAPD-2</h1><p>Acompanhe turmas, conteúdos, notas e pacotes gerados pela IA.</p></div>
-  <a class="btn light" href="/admin/">Abrir administração completa</a>
-</section>
-<form class="filter-bar" method="get">
-  <label>Turma
-    <select name="turma"><option value="">Todas</option>{% for turma in turmas %}<option value="{{ turma.pk }}" {% if turma_id == turma.pk|stringformat:"s" %}selected{% endif %}>Turma {{ turma.codigo }}</option>{% endfor %}</select>
-  </label>
-  <label>Tema
-    <select name="tema"><option value="">Todos</option>{% for tema in temas %}<option value="{{ tema.pk }}" {% if tema_id == tema.pk|stringformat:"s" %}selected{% endif %}>{{ tema.titulo }}</option>{% endfor %}</select>
-  </label>
-  <button class="btn primary" type="submit">Aplicar filtros</button>
-  <a class="btn ghost" href="{% url 'professor_dashboard' %}">Limpar</a>
-</form>
-<div class="metrics-grid">
-  <div class="metric"><span>Alunos cadastrados</span><strong>{{ metricas.alunos }}</strong></div>
-  <div class="metric"><span>Atividades concluídas</span><strong>{{ metricas.concluidas }}</strong></div>
-  <div class="metric"><span>Média geral</span><strong>{{ metricas.media|default:"—"|floatformat:2 }}</strong></div>
-  <div class="metric"><span>Aguardando revisão</span><strong>{{ metricas.revisao }}</strong></div>
-</div>
-
-<section>
-  <div class="section-head"><h2>Temas e pacotes de estudo</h2><a href="/admin/core/tema/">Editar temas</a></div>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Tema</th><th>Questões</th><th>Aprovadas</th><th>Conclusões</th><th>Média</th><th>Status</th><th>Ações</th></tr></thead>
-      <tbody>
-      {% for tema in temas %}
-        <tr>
-          <td><strong>{{ tema.titulo }}</strong></td>
-          <td>{{ tema.total_questoes }}</td><td>{{ tema.aprovadas }}</td><td>{{ tema.concluidas }}</td>
-          <td>{{ tema.media|default:"—"|floatformat:2 }}</td>
-          <td>{% if tema.pacote_publicado %}<span class="badge success">Publicado</span>{% else %}<span class="badge">Rascunho</span>{% endif %}</td>
-          <td class="actions-cell">
-            <form method="post" action="{% url 'gerar_pacote' tema.pk %}" onsubmit="return confirm('Gerar ou substituir o pacote IA em rascunho?')">{% csrf_token %}<button class="mini-btn">Gerar com IA</button></form>
-            <a class="mini-btn" href="/admin/core/questao/?tema__id__exact={{ tema.pk }}">Revisar</a>
-            <form method="post" action="{% url 'publicar_pacote' tema.pk %}">{% csrf_token %}<button class="mini-btn primary">Publicar</button></form>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
-
-
-<section>
-  <div class="section-head"><h2>Médias por aluno</h2><span>Filtrável por turma e tema</span></div>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Aluno</th><th>RGM</th><th>Turma</th><th>Atividades concluídas</th><th>Média</th></tr></thead>
-      <tbody>
-      {% for aluno in alunos_desempenho %}
-        <tr><td><strong>{{ aluno.nome_exibicao }}</strong></td><td>{{ aluno.rgm }}</td><td>{{ aluno.turma.codigo }}</td><td>{{ aluno.concluidas }}</td><td><strong>{{ aluno.media|default:"—"|floatformat:2 }}</strong></td></tr>
-      {% empty %}<tr><td colspan="5">Nenhum aluno corresponde aos filtros.</td></tr>{% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<section>
-  <div class="section-head"><h2>Desempenho recente</h2><a href="/admin/core/tentativa/">Ver todos</a></div>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Aluno</th><th>Turma</th><th>Tema</th><th>Nota</th><th>Status</th><th></th></tr></thead>
-      <tbody>
-      {% for t in tentativas %}
-        <tr><td>{{ t.aluno.nome_exibicao }}<small>{{ t.aluno.rgm }}</small></td><td>{{ t.aluno.turma.codigo }}</td><td>{{ t.tema.titulo }}</td><td><strong>{{ t.nota_total }}</strong></td><td>{{ t.get_status_display }}</td><td><a href="{% url 'ajustar_nota' t.pk %}">Editar nota</a></td></tr>
-      {% empty %}<tr><td colspan="6">Nenhuma tentativa registrada.</td></tr>{% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<section>
-  <div class="section-head"><h2>Cronogramas</h2><a href="/admin/core/aula/">Editar cronogramas</a></div>
-  <div class="class-grid">
-  {% for turma in turmas %}
-    <div class="class-card"><span>Turma</span><strong>{{ turma.codigo }}</strong><p>{{ turma.aulas.count }} entradas • {{ turma.alunos.count }} alunos</p><p>Média: <b>{{ turma.media|default:"—"|floatformat:2 }}</b> • {{ turma.concluidas }} conclusões</p></div>
-  {% endfor %}
-  </div>
-</section>
+<header class="page-header hero-header"><div><p class="eyebrow">Dashboard do professor</p><h1>Gestão acadêmica MAPD</h1><p>Acompanhe desempenho, publique pacotes e audite o uso da IA.</p></div><div class="header-actions"><a class="primary-btn" href="{% url 'tema_novo' %}">Novo tema</a><a class="secondary-btn" href="{% url 'relatorios' %}">Exportar relatórios</a></div></header>
+<section class="metric-grid five"><article class="metric-card"><span>Alunos ativos</span><strong>{{ metricas.alunos }}</strong></article><article class="metric-card"><span>Conclusões</span><strong>{{ metricas.concluidas }}</strong></article><article class="metric-card"><span>Média</span><strong>{{ metricas.media|default:"—" }}</strong></article><article class="metric-card"><span>Revisão docente</span><strong>{{ metricas.revisao }}</strong></article><article class="metric-card"><span>Temas publicados</span><strong>{{ metricas.temas_publicados }}</strong></article></section>
+<form method="get" class="filter-bar"><select name="turma" class="form-control"><option value="">Todas as turmas</option>{% for turma in turmas %}<option value="{{ turma.pk }}" {% if filtros.turma == turma.pk|stringformat:'s' %}selected{% endif %}>Turma {{ turma.codigo }}</option>{% endfor %}</select><select name="tema" class="form-control"><option value="">Todos os temas</option>{% for tema in temas %}<option value="{{ tema.pk }}" {% if filtros.tema == tema.pk|stringformat:'s' %}selected{% endif %}>{{ tema.titulo }}</option>{% endfor %}</select><input class="form-control" name="aluno" value="{{ filtros.aluno }}" placeholder="Nome ou RGM"><select name="status" class="form-control"><option value="">Todos os status</option><option value="CONCLUIDA">Concluída</option><option value="REVISAO">Revisão</option><option value="EM_ANDAMENTO">Em andamento</option></select><button class="secondary-btn" type="submit">Filtrar</button></form>
+<section class="chart-grid"><article class="panel"><div class="panel-heading"><h2>Média por tema</h2></div><canvas id="chart-temas" height="150"></canvas></article><article class="panel"><div class="panel-heading"><h2>Média por turma</h2></div><canvas id="chart-turmas" height="150"></canvas></article></section>
+<section class="section-block"><div class="section-heading"><div><p class="eyebrow">Conteúdo e avaliação</p><h2>Temas</h2></div></div><div class="theme-grid professor-themes">{% for tema in temas %}<article class="theme-card"><div class="theme-body"><span class="status-pill {% if tema.pacote_publicado %}success{% else %}pending{% endif %}">{% if tema.pacote_publicado %}publicado{% else %}rascunho{% endif %}</span><h3>{{ tema.titulo }}</h3><div class="theme-meta"><span>{{ tema.aprovadas }}/{{ tema.total_questoes }} questões aprovadas</span><span>Média {{ tema.media|default:"—" }}</span></div></div><a class="card-link" href="{% url 'professor_tema' tema.pk %}">Gerenciar →</a></article>{% endfor %}</div></section>
+<section class="two-column"><article class="panel"><div class="panel-heading"><h2>Últimas tentativas</h2><a href="{% url 'relatorios' %}">Ver todas</a></div><div class="table-wrap"><table><thead><tr><th>Aluno</th><th>Turma</th><th>Tema</th><th>Nota</th><th>Status</th></tr></thead><tbody>{% for t in tentativas %}<tr><td><a href="{% url 'tentativa_detalhe' t.pk %}">{{ t.aluno.nome_exibicao }}</a><small>{{ t.aluno.rgm }}</small></td><td>{{ t.aluno.turma.codigo|default:"—" }}</td><td>{{ t.tema.titulo|truncatechars:35 }}</td><td><strong>{{ t.nota_total }}</strong></td><td><span class="status-pill">{{ t.get_status_display }}</span></td></tr>{% empty %}<tr><td colspan="5">Sem tentativas.</td></tr>{% endfor %}</tbody></table></div></article><article class="panel"><div class="panel-heading"><h2>Alunos</h2></div><div class="table-wrap"><table><thead><tr><th>Aluno</th><th>Turma</th><th>Média</th><th></th></tr></thead><tbody>{% for aluno in alunos %}<tr><td>{{ aluno.nome_exibicao }}<small>{{ aluno.rgm }}</small></td><td>{{ aluno.turma.codigo|default:"—" }}</td><td>{{ aluno.media|default:"—" }}</td><td><a href="{% url 'aluno_editar' aluno.pk %}">Editar</a></td></tr>{% endfor %}</tbody></table></div></article></section>
+{% if tarefas_ia %}<section class="section-block"><div class="section-heading"><h2>Processamento de IA</h2></div><div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Tema</th><th>Status</th><th>Data</th><th>Detalhe</th></tr></thead><tbody>{% for tarefa in tarefas_ia %}<tr><td>{{ tarefa.get_tipo_display }}</td><td>{{ tarefa.tema|default:"—" }}</td><td><span class="status-pill {% if tarefa.status == 'CONCLUIDA' %}success{% elif tarefa.status == 'ERRO' %}danger{% endif %}">{{ tarefa.get_status_display }}</span></td><td>{{ tarefa.criada_em|date:"d/m H:i" }}</td><td>{{ tarefa.mensagem_erro|truncatechars:80 }}</td></tr>{% endfor %}</tbody></table></div></section>{% endif %}
+{{ chart_temas|json_script:"chart-temas-data" }}{{ chart_turmas|json_script:"chart-turmas-data" }}
 {% endblock %}
+{% block scripts %}<script>document.addEventListener('DOMContentLoaded',()=>{if(!window.Chart)return;const parse=id=>{try{return JSON.parse(JSON.parse(document.getElementById(id).textContent))}catch(e){return[]}};const a=parse('chart-temas-data'),b=parse('chart-turmas-data');new Chart(document.getElementById('chart-temas'),{type:'bar',data:{labels:a.map(x=>x.tema__titulo),datasets:[{label:'Média',data:a.map(x=>x.media)}]},options:{responsive:true,scales:{y:{beginAtZero:true,max:10}}}});new Chart(document.getElementById('chart-turmas'),{type:'doughnut',data:{labels:b.map(x=>'Turma '+(x.aluno__turma__codigo||'—')),datasets:[{data:b.map(x=>x.media)}]},options:{responsive:true}})});</script>{% endblock %}

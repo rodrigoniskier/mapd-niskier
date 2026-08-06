@@ -1,50 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Revisão • {{ tema.titulo }}{% endblock %}
+{% load static %}
+{% block title %}Revisão — {{ tema.titulo }}{% endblock %}
 {% block content %}
-<a class="back" href="{% url 'escolher_modo' tema.slug %}">← Voltar</a>
-<section class="review-shell">
-  <div class="section-head">
-    <div><p class="eyebrow">Revisão rápida</p><h1>{{ tema.titulo }}</h1></div>
-    <span id="slide-counter">1/{{ slides|length }}</span>
-  </div>
-  {% for slide in slides %}
-    <article class="review-slide {% if not forloop.first %}hidden{% endif %}" data-slide="{{ forloop.counter0 }}">
-      <span class="slide-number">{{ forloop.counter|stringformat:"02d" }}</span>
-      <h2>{{ slide.titulo }}</h2>
-      <div class="rich-text">{{ slide.conteudo|linebreaks }}</div>
-    </article>
-  {% empty %}
-    <div class="empty-state">A revisão ainda não foi publicada.</div>
-  {% endfor %}
-  {% if slides %}
-  <div class="review-actions">
-    <button class="btn ghost" id="prev-slide" type="button">Anterior</button>
-    <button class="btn primary" id="next-slide" type="button">Próximo</button>
-    <a class="btn success hidden" id="finish-review" href="{% url 'iniciar_avaliacao' tema.slug %}">Concluído — ir para o teste</a>
-  </div>
-  {% endif %}
-</section>
+<header class="page-header"><a class="back-link" href="{% url 'escolher_modo' tema.slug %}">← Voltar</a><p class="eyebrow">Revisão rápida</p><h1>{{ tema.titulo }}</h1><p>Navegue pelas telas. O objetivo é recuperar os mecanismos centrais, não substituir o estudo completo.</p></header>
+{% if slides %}
+<div class="carousel" data-carousel>
+  <div class="carousel-progress"><span data-carousel-progress></span></div>
+  {% for slide in slides %}<article class="review-slide {% if forloop.first %}active{% endif %}" data-slide>
+    <div class="slide-counter">{{ forloop.counter }} / {{ slides|length }}</div><p class="eyebrow">Revisão mecanístico-clínica</p><h2>{{ slide.titulo }}</h2><div class="rich-text">{{ slide.conteudo|linebreaks }}</div>
+    {% if slide.pontos_chave %}<div class="key-points"><h3>Pontos-chave</h3><ul>{% for ponto in slide.pontos_chave %}<li>{{ ponto }}</li>{% endfor %}</ul></div>{% endif %}
+  </article>{% endfor %}
+  <div class="carousel-actions"><button class="secondary-btn" type="button" data-carousel-prev>Anterior</button><button class="primary-btn" type="button" data-carousel-next>Próxima</button></div>
+</div>
+<form action="{% url 'concluir_revisao' tema.slug %}" method="post" class="finish-review" data-finish-review hidden>{% csrf_token %}<button class="primary-btn" type="submit">Concluído — preparar avaliação</button></form>
+{% else %}<div class="empty-state"><h2>Revisão em preparação</h2><p>O professor ainda não publicou as telas deste tema.</p></div>{% endif %}
 {% endblock %}
-{% block scripts %}
-<script>
-(() => {
-  const slides = [...document.querySelectorAll(".review-slide")];
-  if (!slides.length) return;
-  let current = 0;
-  const prev = document.getElementById("prev-slide");
-  const next = document.getElementById("next-slide");
-  const finish = document.getElementById("finish-review");
-  const counter = document.getElementById("slide-counter");
-  function render() {
-    slides.forEach((s, i) => s.classList.toggle("hidden", i !== current));
-    prev.disabled = current === 0;
-    next.classList.toggle("hidden", current === slides.length - 1);
-    finish.classList.toggle("hidden", current !== slides.length - 1);
-    counter.textContent = `${current + 1}/${slides.length}`;
-  }
-  prev.addEventListener("click", () => { if (current > 0) current--; render(); });
-  next.addEventListener("click", () => { if (current < slides.length - 1) current++; render(); });
-  render();
-})();
-</script>
-{% endblock %}
+{% block scripts %}<script src="{% static 'js/revisao.js' %}"></script>{% endblock %}

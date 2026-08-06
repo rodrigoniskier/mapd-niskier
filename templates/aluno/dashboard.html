@@ -1,61 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Meus estudos • MAPD Niskier{% endblock %}
+{% block title %}Meus estudos — MAPD Niskier{% endblock %}
 {% block content %}
-<section class="hero compact">
-  <div>
-    <p class="eyebrow">Turma {{ user.turma.codigo }} • {{ user.turma.semestre }}</p>
-    <h1>Olá, {{ user.nome_exibicao }}</h1>
-    <p>Escolha o tema da aula para revisar, testar seus conhecimentos ou conversar com a IA Niskier.</p>
+<header class="page-header hero-header">
+  <div><p class="eyebrow">Turma {{ turma.codigo|default:"não vinculada" }} · {{ turma.semestre|default:"" }}</p><h1>Olá, {{ user.first_name|default:user.nome_exibicao }}.</h1><p>Escolha um tema para revisar, testar ou conversar com a IA Niskier.</p></div>
+  <div class="metric-inline"><strong>{{ metricas.media|default:"—" }}</strong><span>média geral</span></div>
+</header>
+<section class="metric-grid">
+  <article class="metric-card"><span>Atividades concluídas</span><strong>{{ metricas.concluidas }}</strong></article>
+  <article class="metric-card"><span>Temas disponíveis</span><strong>{{ temas|length }}</strong></article>
+  <article class="metric-card"><span>Turma</span><strong>{{ turma.codigo|default:"—" }}</strong></article>
+</section>
+<section class="section-block"><div class="section-heading"><div><p class="eyebrow">Trilha do semestre</p><h2>Temas das aulas</h2></div></div>
+  <div class="theme-grid">
+  {% for item in temas %}
+    <article class="theme-card {% if not item.liberado %}locked{% endif %}">
+      <div class="theme-number">{{ forloop.counter|stringformat:"02d" }}</div>
+      <div class="theme-body"><span class="status-pill {% if item.tema.pacote_publicado %}success{% else %}pending{% endif %}">{% if item.tema.pacote_publicado %}atividade pronta{% else %}em preparação{% endif %}</span><h3>{{ item.tema.titulo }}</h3><p>{{ item.tema.descricao|default:item.aula.atividade|truncatechars:150 }}</p><div class="theme-meta"><span>{{ item.aula.data|date:"d/m/Y"|default:"data a definir" }}</span><span>{{ item.tentativas }}/{{ item.tema.tentativas_permitidas }} tentativas</span></div></div>
+      {% if item.liberado %}<a class="card-link" href="{% url 'escolher_modo' item.tema.slug %}">Abrir tema →</a>{% else %}<span class="card-link disabled">Ainda não liberado</span>{% endif %}
+    </article>
+  {% empty %}<div class="empty-state"><h3>Nenhum tema disponível</h3><p>Confirme com o professor se seu RGM está vinculado à turma correta.</p></div>{% endfor %}
   </div>
 </section>
-
-<div class="layout-two">
-  <section>
-    <div class="section-head"><h2>Temas das aulas</h2><span>{{ temas|length }} temas</span></div>
-    <div class="card-grid">
-      {% for tema in temas %}
-        <a class="topic-card" href="{{ tema.get_absolute_url }}">
-          <span class="topic-index">{{ forloop.counter|stringformat:"02d" }}</span>
-          <div>
-            <h3>{{ tema.titulo }}</h3>
-            <p>{{ tema.descricao|default:"Revisão e prática orientada." }}</p>
-          </div>
-          <span class="arrow">→</span>
-        </a>
-      {% empty %}
-        <div class="empty-state">Os temas ainda não foram vinculados à sua turma.</div>
-      {% endfor %}
-    </div>
-  </section>
-  <aside class="side-panel">
-    <h2>Seu progresso</h2>
-    {% for tentativa in tentativas %}
-      <a class="progress-row" href="{% url 'resultado' tentativa.pk %}">
-        <span>{{ tentativa.tema.titulo }}</span><strong>{{ tentativa.nota_total }}</strong>
-      </a>
-    {% empty %}
-      <p class="muted">Suas atividades concluídas aparecerão aqui.</p>
-    {% endfor %}
-  </aside>
-</div>
-
-<section class="schedule">
-  <div class="section-head"><h2>Cronograma da turma</h2></div>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Data</th><th>Horário</th><th>Conteúdo</th><th>CH</th><th>Local</th></tr></thead>
-      <tbody>
-      {% for aula in aulas %}
-        <tr>
-          <td>{{ aula.data|date:"d/m"|default:"A definir" }}</td>
-          <td>{{ aula.horario }}</td>
-          <td>{{ aula.conteudo }}</td>
-          <td>{{ aula.carga_horaria }}</td>
-          <td>{{ aula.local }}</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
+{% if tentativas %}<section class="section-block"><div class="section-heading"><h2>Atividades recentes</h2></div><div class="table-wrap"><table><thead><tr><th>Tema</th><th>Status</th><th>Nota</th><th>Data</th><th></th></tr></thead><tbody>{% for t in tentativas %}<tr><td>{{ t.tema.titulo }}</td><td><span class="status-pill">{{ t.get_status_display }}</span></td><td><strong>{{ t.nota_total }}</strong></td><td>{{ t.concluida_em|date:"d/m/Y H:i"|default:"em andamento" }}</td><td><a href="{% url 'resultado' t.pk %}">Ver</a></td></tr>{% endfor %}</tbody></table></div></section>{% endif %}
 {% endblock %}

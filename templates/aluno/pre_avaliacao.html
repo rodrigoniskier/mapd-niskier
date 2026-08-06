@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Preparação — {{ tema.titulo }}{% endblock %}
+{% block content %}
+<section class="focus-card"><span class="mode-icon">10</span><p class="eyebrow">Revisão concluída</p><h1>Prepare-se para testar seu raciocínio.</h1><p>Você resolverá <strong>9 questões objetivas</strong> e <strong>1 questão discursiva</strong>. Na discursiva, identifique e corrija erros discretos em um resumo clínico.</p><ul class="check-list"><li>Leia o caso antes das alternativas.</li><li>Use a IA Niskier para receber pistas, não respostas.</li><li>Seu progresso será salvo automaticamente.</li></ul><form action="{% url 'iniciar_avaliacao' tema.slug %}" method="post">{% csrf_token %}<button class="primary-btn large" type="submit">Iniciar avaliação</button></form><a class="text-link" href="{% url 'revisar' tema.slug %}">Rever o conteúdo</a></section>
+{% endblock %}
