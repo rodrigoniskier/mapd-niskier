@@ -98,6 +98,7 @@ FONTES APROVADAS:
         model=settings.GEMINI_MODEL,
         contents=prompt,
         config=types.GenerateContentConfig(
+            tools=[{"url_context": {}}],
             response_mime_type="application/json",
             response_schema=PacoteEstudoSchema,
             temperature=0.35,
@@ -140,6 +141,7 @@ FONTES APROVADAS:
         model=settings.GEMINI_MODEL,
         contents=prompt,
         config=types.GenerateContentConfig(
+            tools=[{"url_context": {}}],
             response_mime_type="application/json",
             response_schema=RespostaTutorSchema,
             temperature=0.35,
