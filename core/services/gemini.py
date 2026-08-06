@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import time
 from typing import Literal
 
@@ -70,6 +71,18 @@ class PacoteEstudoSchema(BaseModel):
     discursivas: list[QuestaoDiscursivaSchema] = Field(min_length=1, max_length=3)
 
 
+class SlidesLoteSchema(BaseModel):
+    slides: list[SlideSchema] = Field(min_length=3, max_length=3)
+
+
+class ObjetivasLoteSchema(BaseModel):
+    objetivas: list[QuestaoObjetivaSchema] = Field(min_length=5, max_length=5)
+
+
+class DiscursivasLoteSchema(BaseModel):
+    discursivas: list[QuestaoDiscursivaSchema] = Field(min_length=2, max_length=2)
+
+
 class CorrecaoDiscursivaSchema(BaseModel):
     nota: float = Field(ge=0, le=2.8)
     comentario: str = Field(min_length=80, max_length=3000)
@@ -130,15 +143,13 @@ def _fontes_aprovadas(max_chars=30000):
 
 
 def _config_estruturada(max_tokens, tools=None, usar_json_mode=True):
-    """Monta a configuração sem enviar JSON Schema ao endpoint Gemini.
-
-    O contrato continua sendo validado localmente pelo Pydantic. Isso evita
-    rejeições 400 causadas por diferenças no subconjunto de JSON Schema aceito
-    por cada modelo ou versão da API.
-    """
+    """Monta a configuração sem enviar JSON Schema ao endpoint Gemini."""
     from google.genai import types
 
-    kwargs = {"max_output_tokens": max_tokens}
+    kwargs = {
+        "max_output_tokens": max_tokens,
+        "temperature": 0.2,
+    }
     if usar_json_mode:
         kwargs["response_mime_type"] = "application/json"
     if tools:
@@ -147,7 +158,7 @@ def _config_estruturada(max_tokens, tools=None, usar_json_mode=True):
 
 
 def _limpar_json_resposta(texto):
-    texto = (texto or "").strip()
+    texto = (texto or "").strip().lstrip("\ufeff")
     if texto.startswith("```"):
         linhas = texto.splitlines()
         if linhas and linhas[0].strip().startswith("```"):
@@ -155,7 +166,28 @@ def _limpar_json_resposta(texto):
         if linhas and linhas[-1].strip() == "```":
             linhas = linhas[:-1]
         texto = "\n".join(linhas).strip()
+
+    inicio = texto.find("{")
+    fim = texto.rfind("}")
+    if inicio >= 0 and fim > inicio:
+        texto = texto[inicio : fim + 1]
     return texto
+
+
+def _validar_json_resposta(texto, schema):
+    texto = _limpar_json_resposta(texto)
+    if not texto:
+        raise RuntimeError("O Gemini retornou uma resposta vazia.")
+
+    try:
+        return schema.model_validate_json(texto)
+    except Exception as erro_original:
+        reparado = re.sub(r",\s*([}\]])", r"\1", texto)
+        try:
+            dados = json.loads(reparado)
+            return schema.model_validate(dados)
+        except Exception:
+            raise erro_original
 
 
 def _modelos_configurados():
@@ -183,6 +215,7 @@ def _gerar_estruturado(prompt, schema, max_tokens, tools=None):
         "FORMATO DE SAÍDA OBRIGATÓRIO:\n"
         "- retorne somente um objeto JSON válido;\n"
         "- não use Markdown, comentários ou texto fora do JSON;\n"
+        "- não encerre a resposta antes de fechar todos os objetos e listas;\n"
         "- respeite exatamente a estrutura e os campos deste contrato:\n"
         f"{schema_texto}"
     )
@@ -190,56 +223,48 @@ def _gerar_estruturado(prompt, schema, max_tokens, tools=None):
     erros = []
     planos = []
     if tools:
-        planos.append((tools, max_tokens, True, "json+ferramentas"))
+        planos.append((tools, True, "json+ferramentas"))
     planos.extend(
         [
-            (None, max_tokens, True, "json"),
-            (None, min(max_tokens, 8192), True, "json-compacto"),
-            (None, min(max_tokens, 8192), False, "texto-json"),
+            (None, True, "json"),
+            (None, False, "texto-json"),
         ]
     )
 
-    planos_unicos = []
-    vistos = set()
-    for plano in planos:
-        chave = (bool(plano[0]), plano[1], plano[2])
-        if chave not in vistos:
-            vistos.add(chave)
-            planos_unicos.append(plano)
-
     for modelo in _modelos_configurados():
-        for ferramentas, limite, usar_json_mode, modo in planos_unicos:
-            client = None
-            try:
-                client = _client()
-                response = client.models.generate_content(
-                    model=modelo,
-                    contents=prompt_json,
-                    config=_config_estruturada(
-                        limite,
-                        tools=ferramentas,
-                        usar_json_mode=usar_json_mode,
-                    ),
-                )
-                texto = _limpar_json_resposta(getattr(response, "text", ""))
-                if not texto:
-                    raise RuntimeError("O Gemini retornou uma resposta vazia.")
-                resultado = schema.model_validate_json(texto)
-                return resultado, response
-            except Exception as exc:
-                detalhe = f"{modelo}/{modo}: {exc}"
-                erros.append(detalhe)
-                logger.warning("Falha Gemini %s", detalhe)
-                time.sleep(1)
-            finally:
-                if client is not None:
-                    try:
-                        client.close()
-                    except Exception:
-                        logger.debug(
-                            "Não foi possível fechar o cliente Gemini.",
-                            exc_info=True,
-                        )
+        for ferramentas, usar_json_mode, modo in planos:
+            for tentativa in range(1, 3):
+                client = None
+                try:
+                    client = _client()
+                    response = client.models.generate_content(
+                        model=modelo,
+                        contents=prompt_json,
+                        config=_config_estruturada(
+                            max_tokens,
+                            tools=ferramentas,
+                            usar_json_mode=usar_json_mode,
+                        ),
+                    )
+                    resultado = _validar_json_resposta(
+                        getattr(response, "text", ""),
+                        schema,
+                    )
+                    return resultado, response
+                except Exception as exc:
+                    detalhe = f"{modelo}/{modo}/tentativa-{tentativa}: {exc}"
+                    erros.append(detalhe)
+                    logger.warning("Falha Gemini %s", detalhe)
+                    time.sleep(2 * tentativa)
+                finally:
+                    if client is not None:
+                        try:
+                            client.close()
+                        except Exception:
+                            logger.debug(
+                                "Não foi possível fechar o cliente Gemini.",
+                                exc_info=True,
+                            )
 
     resumo = " | ".join(erros[-8:])
     raise RuntimeError(f"Não foi possível obter resposta válida do Gemini: {resumo}")
@@ -272,42 +297,24 @@ def _fontes_grounding(response):
     return resultado
 
 
-def gerar_pacote_estudo(tema):
-    contexto, urls = _fontes_aprovadas()
+def _contexto_base_pacote(tema, contexto, urls):
     url_bloco = "\n".join(f"- {url}" for url in urls)
-    prompt = f"""
-Você é a IA Niskier, assistente acadêmica do curso de Medicina. Crie um pacote auditável de estudo
-para o tema: {tema.titulo}.
+    return f"""
+Você é a IA Niskier, assistente acadêmica do curso de Medicina.
+Tema: {tema.titulo}.
 
-Objetivo pedagógico:
-- revisão rápida em 2 ou 3 telas;
+Objetivos pedagógicos:
+- revisão rápida e mecanística;
 - prática deliberada personalizada;
-- avaliação formativa contextualizada, com feedback construtivo;
+- avaliação formativa contextualizada;
 - integração entre mecanismos básicos, evidências diagnósticas e raciocínio clínico.
 
-Regras obrigatórias para os slides:
-- produza exatamente 3 slides;
-- cada slide deve ser curto, clinicamente relevante e mecanístico;
-- use linguagem adequada ao 4º período de Medicina;
-- inclua de 2 a 6 pontos-chave em cada slide.
-
-Regras obrigatórias para o banco de questões:
-- produza exatamente 15 questões objetivas no padrão ENAMED, com situação-problema ou cenário clínico;
-- cinco alternativas A–E, homogêneas, plausíveis e com apenas uma resposta defensável;
-- em `alternativas`, preencha obrigatoriamente os cinco campos fixos A, B, C, D e E;
-- evite pistas gramaticais, absolutismos, negativas desnecessárias, pegadinhas e memorização isolada;
-- distribuição: 5 básicas, 7 intermediárias e 3 avançadas;
-- registre habilidade avaliada, nível cognitivo, justificativa do gabarito e referências;
-- produza exatamente 2 questões discursivas com resumo clínico contendo 3 a 5 erros conceituais discretos;
-- o aluno deverá identificar, explicar e corrigir os erros;
-- não inclua o gabarito no enunciado;
-- não invente números, recomendações ou referências.
-
-Regras de fonte:
-- baseie-se prioritariamente na fonte principal e nas fontes aprovadas;
-- URLs públicas aprovadas podem ser lidas pela ferramenta de contexto de URL;
-- toda questão deve apontar pelo menos uma fonte real;
-- escreva em português do Brasil.
+Regras gerais:
+- linguagem adequada ao 4º período de Medicina;
+- baseie-se prioritariamente na fonte principal e nas fontes aprovadas abaixo;
+- não invente números, recomendações ou referências;
+- escreva em português do Brasil;
+- registre referências reais em cada questão.
 
 Instruções adicionais do professor:
 {tema.instrucoes_ia or 'Nenhuma.'}
@@ -316,11 +323,82 @@ URLS APROVADAS:
 {url_bloco or '- Nenhuma URL cadastrada.'}
 
 TRECHOS E RESUMOS APROVADOS:
-{contexto or 'Nenhum conteúdo textual importado. Use apenas as URLs aprovadas.'}
+{contexto or 'Nenhum conteúdo textual importado. Use conhecimento médico consolidado e cite apenas as URLs aprovadas.'}
 """
-    tools = [{"url_context": {}}] if urls else None
-    pacote, _ = _gerar_estruturado(prompt, PacoteEstudoSchema, 24000, tools=tools)
-    return pacote
+
+
+def gerar_pacote_estudo(tema):
+    """Gera o pacote em cinco respostas menores para evitar truncamento e timeout."""
+    contexto, urls = _fontes_aprovadas(max_chars=22000)
+    base = _contexto_base_pacote(tema, contexto, urls)
+
+    slides_lote, _ = _gerar_estruturado(
+        f"""
+{base}
+
+Produza exatamente 3 telas de revisão.
+Cada tela deve conter título, texto mecanístico clinicamente relevante e de 2 a 6 pontos-chave.
+Não produza questões nesta resposta.
+""",
+        SlidesLoteSchema,
+        3500,
+    )
+
+    discursivas_lote, _ = _gerar_estruturado(
+        f"""
+{base}
+
+Produza exatamente 2 questões discursivas.
+Cada uma deve apresentar um resumo clínico com 3 a 5 erros conceituais discretos para o aluno
+identificar, explicar e corrigir. Não revele os erros no enunciado. Inclua espelho detalhado,
+habilidade e referências. Não produza questões objetivas nesta resposta.
+""",
+        DiscursivasLoteSchema,
+        4500,
+    )
+
+    distribuicoes = [
+        (2, 2, 1),
+        (2, 2, 1),
+        (1, 3, 1),
+    ]
+    objetivas = []
+
+    for numero_lote, (basicas, intermediarias, avancadas) in enumerate(
+        distribuicoes,
+        start=1,
+    ):
+        anteriores = "\n".join(
+            f"- {questao.enunciado[:260]}" for questao in objetivas
+        ) or "- Nenhuma questão anterior."
+        lote, _ = _gerar_estruturado(
+            f"""
+{base}
+
+Produza o lote {numero_lote} de 3, contendo exatamente 5 questões objetivas inéditas no padrão ENAMED.
+Distribuição obrigatória neste lote: {basicas} básicas, {intermediarias} intermediárias e {avancadas} avançada(s).
+Cada questão deve:
+- apresentar situação-problema ou cenário clínico;
+- conter cinco alternativas A, B, C, D e E, homogêneas e plausíveis;
+- ter somente uma resposta defensável;
+- evitar pistas gramaticais, absolutismos, negativas desnecessárias e pegadinhas;
+- registrar gabarito, justificativa, habilidade, nível cognitivo e referências.
+
+Não repita nem parafraseie excessivamente estes enunciados já gerados:
+{anteriores}
+
+Não produza slides nem questões discursivas nesta resposta.
+""",
+            ObjetivasLoteSchema,
+            7000,
+        )
+        objetivas.extend(lote.objetivas)
+
+    return PacoteEstudoSchema(
+        slides=slides_lote.slides,
+        objetivas=objetivas,
+        discursivas=discursivas_lote.discursivas,
+    )
 
 
 def responder_tutor(tema, mensagem, historico="", contexto_questao="", nivel_pista=1, modo_questao=False):
