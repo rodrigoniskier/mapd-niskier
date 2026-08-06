@@ -1,4 +1,4 @@
-Django==5.2.15
+Django==5.2.16
 google-genai>=1.38.0,<2
 python-dotenv>=1.0.1,<2
 pydantic>=2.8,<3
