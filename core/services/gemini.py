@@ -1,11 +1,9 @@
 import json
 import logging
 import time
-from decimal import Decimal
 from typing import Literal
 
 from django.conf import settings
-from django.utils import timezone
 from pydantic import BaseModel, Field, field_validator
 
 from core.models import FonteConhecimento, Questao, Tentativa
@@ -131,64 +129,120 @@ def _fontes_aprovadas(max_chars=30000):
     return "\n".join(blocos), list(dict.fromkeys(urls))[:20]
 
 
-def _config_estruturada(schema, max_tokens, tools=None):
+def _config_estruturada(max_tokens, tools=None, usar_json_mode=True):
+    """Monta a configuração sem enviar JSON Schema ao endpoint Gemini.
+
+    O contrato continua sendo validado localmente pelo Pydantic. Isso evita
+    rejeições 400 causadas por diferenças no subconjunto de JSON Schema aceito
+    por cada modelo ou versão da API.
+    """
     from google.genai import types
 
-    kwargs = {
-        "response_mime_type": "application/json",
-        "response_schema": schema,
-        "max_output_tokens": max_tokens,
-    }
+    kwargs = {"max_output_tokens": max_tokens}
+    if usar_json_mode:
+        kwargs["response_mime_type"] = "application/json"
     if tools:
         kwargs["tools"] = tools
     return types.GenerateContentConfig(**kwargs)
 
 
+def _limpar_json_resposta(texto):
+    texto = (texto or "").strip()
+    if texto.startswith("```"):
+        linhas = texto.splitlines()
+        if linhas and linhas[0].strip().startswith("```"):
+            linhas = linhas[1:]
+        if linhas and linhas[-1].strip() == "```":
+            linhas = linhas[:-1]
+        texto = "\n".join(linhas).strip()
+    return texto
+
+
+def _modelos_configurados():
+    modelos = []
+    for valor in (
+        getattr(settings, "GEMINI_MODEL", ""),
+        getattr(settings, "GEMINI_FALLBACK_MODEL", ""),
+    ):
+        modelo = (valor or "").strip()
+        if modelo and modelo not in modelos:
+            modelos.append(modelo)
+    if not modelos:
+        raise RuntimeError("Nenhum modelo Gemini foi configurado.")
+    return modelos
+
+
 def _gerar_estruturado(prompt, schema, max_tokens, tools=None):
-    modelos = [settings.GEMINI_MODEL]
-    fallback = getattr(settings, "GEMINI_FALLBACK_MODEL", "")
-    if fallback and fallback not in modelos:
-        modelos.append(fallback)
+    schema_texto = json.dumps(
+        schema.model_json_schema(),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    prompt_json = (
+        f"{prompt}\n\n"
+        "FORMATO DE SAÍDA OBRIGATÓRIO:\n"
+        "- retorne somente um objeto JSON válido;\n"
+        "- não use Markdown, comentários ou texto fora do JSON;\n"
+        "- respeite exatamente a estrutura e os campos deste contrato:\n"
+        f"{schema_texto}"
+    )
 
-    ultimo_erro = None
-    tools_atuais = tools
+    erros = []
+    planos = []
+    if tools:
+        planos.append((tools, max_tokens, True, "json+ferramentas"))
+    planos.extend(
+        [
+            (None, max_tokens, True, "json"),
+            (None, min(max_tokens, 8192), True, "json-compacto"),
+            (None, min(max_tokens, 8192), False, "texto-json"),
+        ]
+    )
 
-    for modelo in modelos:
-        for tentativa in range(2):
+    planos_unicos = []
+    vistos = set()
+    for plano in planos:
+        chave = (bool(plano[0]), plano[1], plano[2])
+        if chave not in vistos:
+            vistos.add(chave)
+            planos_unicos.append(plano)
+
+    for modelo in _modelos_configurados():
+        for ferramentas, limite, usar_json_mode, modo in planos_unicos:
             client = None
             try:
-                # O Client precisa permanecer referenciado até a resposta síncrona terminar.
-                # Criá-lo diretamente na expressão pode permitir que o coletor o finalize
-                # cedo demais em algumas versões do google-genai/httpx.
                 client = _client()
                 response = client.models.generate_content(
                     model=modelo,
-                    contents=prompt,
-                    config=_config_estruturada(schema, max_tokens, tools=tools_atuais),
+                    contents=prompt_json,
+                    config=_config_estruturada(
+                        limite,
+                        tools=ferramentas,
+                        usar_json_mode=usar_json_mode,
+                    ),
                 )
-                if not response.text:
+                texto = _limpar_json_resposta(getattr(response, "text", ""))
+                if not texto:
                     raise RuntimeError("O Gemini retornou uma resposta vazia.")
-                resultado = schema.model_validate_json(response.text)
+                resultado = schema.model_validate_json(texto)
                 return resultado, response
             except Exception as exc:
-                ultimo_erro = exc
-                logger.warning(
-                    "Falha Gemini modelo=%s tentativa=%s: %s",
-                    modelo,
-                    tentativa + 1,
-                    exc,
-                )
-                time.sleep(1 + tentativa)
-                if tools_atuais:
-                    tools_atuais = None
+                detalhe = f"{modelo}/{modo}: {exc}"
+                erros.append(detalhe)
+                logger.warning("Falha Gemini %s", detalhe)
+                time.sleep(1)
             finally:
                 if client is not None:
                     try:
                         client.close()
                     except Exception:
-                        logger.debug("Não foi possível fechar o cliente Gemini.", exc_info=True)
+                        logger.debug(
+                            "Não foi possível fechar o cliente Gemini.",
+                            exc_info=True,
+                        )
 
-    raise RuntimeError(f"Não foi possível obter resposta válida do Gemini: {ultimo_erro}")
+    resumo = " | ".join(erros[-8:])
+    raise RuntimeError(f"Não foi possível obter resposta válida do Gemini: {resumo}")
 
 
 def _fontes_grounding(response):
@@ -312,10 +366,15 @@ Regras gerais:
 FONTES APROVADAS:
 {contexto}
 """
-    tools = [{"url_context": {}}]
+    tools = [{"url_context": {}}] if urls else []
     if tema.permitir_fontes_externas and getattr(settings, "GEMINI_ENABLE_SEARCH", True):
         tools.append({"google_search": {}})
-    resposta, raw = _gerar_estruturado(prompt, RespostaTutorSchema, 4000, tools=tools)
+    resposta, raw = _gerar_estruturado(
+        prompt,
+        RespostaTutorSchema,
+        4000,
+        tools=tools or None,
+    )
     fontes = [f.model_dump() for f in resposta.fontes]
     fontes.extend(_fontes_grounding(raw))
     unicas = []
