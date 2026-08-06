@@ -48,7 +48,7 @@ class Command(BaseCommand):
                             tema=tema,
                             tipo=Questao.Tipo.OBJETIVA,
                             enunciado=q.enunciado,
-                            alternativas=q.alternativas,
+                            alternativas=q.alternativas_dict(),
                             gabarito=q.gabarito,
                             justificativa=q.justificativa,
                             dificuldade=q.dificuldade,
