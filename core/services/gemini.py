@@ -26,9 +26,27 @@ class FonteSchema(BaseModel):
     resumo: str = ""
 
 
+class AlternativasSchema(BaseModel):
+    """Objeto fechado para evitar `additionalProperties` no schema enviado ao Gemini."""
+
+    A: str = Field(min_length=1, max_length=1200)
+    B: str = Field(min_length=1, max_length=1200)
+    C: str = Field(min_length=1, max_length=1200)
+    D: str = Field(min_length=1, max_length=1200)
+    E: str = Field(min_length=1, max_length=1200)
+
+    @field_validator("A", "B", "C", "D", "E")
+    @classmethod
+    def validar_texto(cls, valor):
+        texto = str(valor).strip()
+        if not texto:
+            raise ValueError("Alternativas vazias não são permitidas.")
+        return texto
+
+
 class QuestaoObjetivaSchema(BaseModel):
     enunciado: str = Field(min_length=120)
-    alternativas: dict[str, str]
+    alternativas: AlternativasSchema
     gabarito: Literal["A", "B", "C", "D", "E"]
     justificativa: str = Field(min_length=80)
     dificuldade: Literal["básica", "intermediária", "avançada"]
@@ -36,14 +54,8 @@ class QuestaoObjetivaSchema(BaseModel):
     habilidade: str
     referencias: list[FonteSchema] = Field(default_factory=list)
 
-    @field_validator("alternativas")
-    @classmethod
-    def validar_alternativas(cls, valor):
-        if set(valor) != {"A", "B", "C", "D", "E"}:
-            raise ValueError("As alternativas devem conter exatamente A, B, C, D e E.")
-        if any(not str(texto).strip() for texto in valor.values()):
-            raise ValueError("Alternativas vazias não são permitidas.")
-        return valor
+    def alternativas_dict(self):
+        return self.alternativas.model_dump()
 
 
 class QuestaoDiscursivaSchema(BaseModel):
@@ -207,6 +219,7 @@ Regras obrigatórias para os slides:
 Regras obrigatórias para o banco de questões:
 - produza exatamente 15 questões objetivas no padrão ENAMED, com situação-problema ou cenário clínico;
 - cinco alternativas A–E, homogêneas, plausíveis e com apenas uma resposta defensável;
+- em `alternativas`, preencha obrigatoriamente os cinco campos fixos A, B, C, D e E;
 - evite pistas gramaticais, absolutismos, negativas desnecessárias, pegadinhas e memorização isolada;
 - distribuição: 5 básicas, 7 intermediárias e 3 avançadas;
 - registre habilidade avaliada, nível cognitivo, justificativa do gabarito e referências;
