@@ -14,32 +14,36 @@
 </head>
 <body class="{% if not user.is_authenticated %}auth-page{% endif %}">
   {% if user.is_authenticated %}
-  <aside class="sidebar" id="sidebar">
-    <a href="{% url 'rotear_dashboard' %}" class="brand">
-      <img src="{% static 'img/logo.svg' %}" alt="MAPD Niskier">
-    </a>
-    <nav class="nav-list" aria-label="Navegação principal">
-      {% if user.e_professor %}
-        <a href="{% url 'professor_dashboard' %}" class="nav-item">Visão geral</a>
-        <a href="{% url 'tema_novo' %}" class="nav-item">Novo tema</a>
-        <a href="{% url 'aula_nova' %}" class="nav-item">Cronograma</a>
-        <a href="{% url 'professor_fontes' %}" class="nav-item">Fontes e auditoria</a>
-        <a href="{% url 'relatorios' %}" class="nav-item">Relatórios</a>
-        <a href="{% url 'admin:index' %}" class="nav-item">Admin avançado</a>
-      {% else %}
-        <a href="{% url 'aluno_dashboard' %}" class="nav-item">Meus temas</a>
-      {% endif %}
-    </nav>
-    <div class="sidebar-footer">
-      <button class="ghost-btn full" type="button" data-theme-toggle>Alternar tema</button>
-      <div class="user-chip">
-        <span class="avatar">{{ user.nome_exibicao|first|upper }}</span>
-        <span><strong>{{ user.nome_exibicao }}</strong><small>{% if user.turma %}Turma {{ user.turma.codigo }}{% else %}Professor{% endif %}</small></span>
+  <header class="topbar" id="topbar">
+    <div class="topbar-inner">
+      <a href="{% url 'rotear_dashboard' %}" class="topbar-brand" aria-label="Página inicial MAPD Niskier">
+        <img src="{% static 'img/logo.svg' %}" alt="MAPD Niskier">
+      </a>
+      <button class="topbar-toggle" type="button" data-topbar-toggle aria-controls="topbar-menu" aria-expanded="false" aria-label="Abrir menu">☰</button>
+      <div class="topbar-menu" id="topbar-menu" data-topbar-menu>
+        <nav class="topbar-nav" aria-label="Navegação principal">
+          {% if user.e_professor %}
+            <a href="{% url 'professor_dashboard' %}" class="nav-item">Visão geral</a>
+            <a href="{% url 'tema_novo' %}" class="nav-item">Novo tema</a>
+            <a href="{% url 'aula_nova' %}" class="nav-item">Cronograma</a>
+            <a href="{% url 'professor_fontes' %}" class="nav-item">Fontes</a>
+            <a href="{% url 'relatorios' %}" class="nav-item">Relatórios</a>
+            <a href="{% url 'admin:index' %}" class="nav-item">Admin</a>
+          {% else %}
+            <a href="{% url 'aluno_dashboard' %}" class="nav-item">Meus temas</a>
+          {% endif %}
+        </nav>
+        <div class="topbar-actions">
+          <button class="topbar-action" type="button" data-theme-toggle title="Alternar tema">◐ Tema</button>
+          <div class="topbar-user" title="{{ user.nome_exibicao }}">
+            <span class="avatar">{{ user.nome_exibicao|first|upper }}</span>
+            <span class="topbar-user-text"><strong>{{ user.nome_exibicao }}</strong><small>{% if user.turma %}Turma {{ user.turma.codigo }}{% else %}Professor{% endif %}</small></span>
+          </div>
+          <form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="topbar-action" type="submit">Sair</button></form>
+        </div>
       </div>
-      <form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="ghost-btn full" type="submit">Sair</button></form>
     </div>
-  </aside>
-  <button class="mobile-menu" type="button" data-sidebar-toggle aria-label="Abrir menu">☰</button>
+  </header>
   {% endif %}
 
   <main class="{% if user.is_authenticated %}app-main{% else %}auth-main{% endif %}">
