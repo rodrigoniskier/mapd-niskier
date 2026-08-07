@@ -28,17 +28,12 @@ def plantao(request, slug):
 @require_POST
 def chat_enviar(request, sessao_id):
     sessao = get_object_or_404(SessaoChat, pk=sessao_id, aluno=request.user, ativa=True)
-    limite = timezone.now() - timedelta(minutes=10)
-    recentes = MensagemChat.objects.filter(
-        sessao__aluno=request.user,
-        autor=MensagemChat.Autor.ALUNO,
-        criada_em__gte=limite,
-    ).count()
-    if recentes >= 30:
-        return JsonResponse({"erro": "Limite temporário de mensagens atingido. Aguarde alguns minutos."}, status=429)
     form = MensagemChatForm(request.POST)
     if not form.is_valid():
-        return JsonResponse({"erro": "Mensagem inválida."}, status=400)
+        return JsonResponse(
+            {"erro": "Mensagem inválida.", "detalhes": form.errors.get_json_data()},
+            status=400,
+        )
     texto = form.cleaned_data["mensagem"]
     questao = None
     contexto_questao = ""
@@ -60,7 +55,7 @@ def chat_enviar(request, sessao_id):
     )
     historico = "\n".join(
         f"{m.get_autor_display()}: {m.texto}"
-        for m in list(sessao.mensagens.order_by("-criada_em")[:10])[::-1]
+        for m in list(sessao.mensagens.order_by("-criada_em")[:16])[::-1]
     )
     try:
         resposta = responder_tutor(
