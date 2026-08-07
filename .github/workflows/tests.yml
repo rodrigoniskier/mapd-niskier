@@ -27,5 +27,7 @@ jobs:
         run: python manage.py check
       - name: Validar migrações
         run: python manage.py makemigrations --check --dry-run
+      - name: Coletar arquivos estáticos
+        run: python manage.py collectstatic --noinput
       - name: Executar testes
         run: python manage.py test
