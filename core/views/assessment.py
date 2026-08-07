@@ -153,6 +153,9 @@ def resultado(request, pk):
 @aluno_required
 def feedback(request, pk):
     tentativa = get_object_or_404(Tentativa, pk=pk, aluno=request.user)
+    if not tentativa.feedback:
+        tentativa.feedback = feedback_deterministico(tentativa)
+        tentativa.save(update_fields=["feedback"])
     respostas = {r.questao_id: r for r in tentativa.respostas.all()}
     linhas = [
         (item, respostas.get(item.questao_id))
