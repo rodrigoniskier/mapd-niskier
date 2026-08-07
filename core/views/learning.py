@@ -15,7 +15,15 @@ def _tema_aluno(request, slug, exigir_publicado=False):
 @aluno_required
 def aluno_dashboard(request):
     turma = request.user.turma
-    aulas = turma.aulas.select_related("tema").all() if turma else Aula.objects.none()
+    aulas_qs = turma.aulas.select_related("tema").all() if turma else Aula.objects.none()
+    aulas = list(aulas_qs)
+    aulas.sort(
+        key=lambda aula: (
+            aula.data is None,
+            aula.data.isoformat() if aula.data else "",
+            aula.pk,
+        )
+    )
     temas = []
     vistos = set()
     for aula in aulas:
