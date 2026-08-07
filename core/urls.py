@@ -30,6 +30,7 @@ urlpatterns = [
     path("professor/temas/<int:tema_id>/", views.professor_tema, name="professor_tema"),
     path("professor/temas/<int:tema_id>/editar/", views.tema_editar, name="tema_editar"),
     path("professor/temas/<int:tema_id>/gerar/", views.gerar_pacote, name="gerar_pacote"),
+    path("professor/temas/<int:tema_id>/gerar-mais-questoes/", views.gerar_mais_questoes, name="gerar_mais_questoes"),
     path("professor/temas/<int:tema_id>/aprovar/", views.aprovar_rascunhos, name="aprovar_rascunhos"),
     path("professor/temas/<int:tema_id>/publicar/", views.publicar_pacote, name="publicar_pacote"),
     path("professor/temas/<int:tema_id>/despublicar/", views.despublicar_pacote, name="despublicar_pacote"),
