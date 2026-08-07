@@ -8,7 +8,7 @@
     <form action="{% url 'finalizar_avaliacao' tentativa.pk %}" method="post" id="assessment-form" data-autosave-url="{% url 'salvar_resposta' tentativa.pk %}">{% csrf_token %}
       {% for linha in itens %}{% with item=linha.item q=linha.item.questao r=linha.resposta %}
       <article class="question-card" id="questao-{{ q.pk }}" data-question data-question-id="{{ q.pk }}" data-order="{{ item.ordem }}">
-        <div class="question-top"><span class="question-number">Questão {{ item.ordem }}</span><span class="status-pill">{{ q.dificuldade }}</span><button type="button" class="ghost-btn ask-question" data-ask-question="{{ q.pk }}">Pedir uma pista</button></div>
+        <div class="question-top"><span class="question-number">Questão {{ item.ordem }}</span><span class="status-pill">{{ q.dificuldade }}</span><button type="button" class="ghost-btn ask-question" data-ask-question="{{ q.pk }}">Conversar sobre esta questão</button></div>
         <div class="question-text">{{ q.enunciado|linebreaks }}</div>
         {% if q.tipo == 'OBJETIVA' %}<div class="alternatives">
           {% for letra,texto in q.alternativas.items %}<label class="alternative"><input type="radio" name="q_{{ q.pk }}" value="{{ letra }}" {% if r.alternativa_marcada == letra %}checked{% endif %}><span class="letter">{{ letra }}</span><span>{{ texto }}</span></label>{% endfor %}
@@ -20,12 +20,14 @@
     </form>
   </section>
   <aside class="chat-panel" id="question-chat" data-chat-url="{% url 'chat_enviar' sessao.pk %}">
-    <div class="chat-header"><div><p class="eyebrow">Tutor socrático</p><h2>IA Niskier</h2></div><span class="online-dot">online</span></div>
-    <div class="chat-notice">{{ aviso }}</div>
-    <div class="hint-levels"><button type="button" class="hint-chip active" data-hint-level="1">Pista 1</button><button type="button" class="hint-chip" data-hint-level="2">Pista 2</button><button type="button" class="hint-chip" data-hint-level="3">Pista 3</button></div>
-    <div class="chat-context" data-chat-context>Nenhuma questão selecionada. Clique em “Pedir uma pista”.</div>
-    <div class="chat-messages" data-chat-messages><div class="message ai">Eu não entregarei a alternativa correta. Vou ajudá-lo a organizar os dados e testar seu raciocínio.</div></div>
-    <form class="chat-form" data-chat-form>{% csrf_token %}<input type="hidden" name="questao_id" data-chat-question><input type="hidden" name="nivel_pista" value="1" data-chat-level><textarea name="mensagem" rows="3" maxlength="4000" placeholder="Explique onde está sua dúvida..."></textarea><button class="primary-btn" type="submit">Enviar</button></form>
+    <div class="chat-header"><div><p class="eyebrow">Plantão 24h durante o exercício</p><h2>IA Niskier</h2></div><span class="online-dot">online</span></div>
+    <div class="chat-notice">{{ aviso }} Você pode conversar quantas vezes precisar durante a atividade.</div>
+    <div class="hint-levels"><button type="button" class="hint-chip active" data-hint-level="1">Orientação breve</button><button type="button" class="hint-chip" data-hint-level="2">Aprofundar</button><button type="button" class="hint-chip" data-hint-level="3">Analisar raciocínio</button></div>
+    <div class="chat-context" data-chat-context>Converse livremente. Para contextualizar uma pergunta específica, use “Conversar sobre esta questão”.</div>
+    <div class="chat-messages" data-chat-messages>
+      {% for msg in sessao.mensagens.all %}<div class="message {% if msg.autor == 'ALUNO' %}student{% else %}ai{% endif %}">{{ msg.texto|linebreaksbr }}{% if msg.fontes %}<div class="source-list">{% for fonte in msg.fontes %}{% if fonte.url %}<a href="{{ fonte.url }}" target="_blank" rel="noopener"><strong>{{ fonte.titulo }}</strong><small>{{ fonte.resumo }}</small></a>{% endif %}{% endfor %}</div>{% endif %}</div>{% empty %}<div class="message ai">Estou disponível durante todo o exercício. Posso ajudar a organizar os dados, revisar mecanismos e testar seu raciocínio.</div>{% endfor %}
+    </div>
+    <form class="chat-form" data-chat-form>{% csrf_token %}<input type="hidden" name="questao_id" data-chat-question><input type="hidden" name="nivel_pista" value="1" data-chat-level><textarea name="mensagem" rows="3" maxlength="4000" placeholder="Converse com a IA Niskier..."></textarea><button class="primary-btn" type="submit">Enviar</button></form>
   </aside>
 </div>
 {% endblock %}
