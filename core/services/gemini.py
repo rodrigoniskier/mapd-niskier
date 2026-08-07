@@ -5,11 +5,62 @@ import time
 from typing import Literal
 
 from django.conf import settings
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from core.models import FonteConhecimento, Questao, Tentativa
 
 logger = logging.getLogger(__name__)
+
+
+DIRETRIZES_ENAMED_OBJETIVAS = """
+PADRÃO DE CONSTRUÇÃO DA QUESTÃO — PROJETO QUESTÕES-ENAMED
+
+1. PARAMETRIZAÇÃO PEDAGÓGICA
+- Defina para cada item a área principal e, quando pertinente, uma área secundária.
+- Alinhe o item a um perfil do avaliado, a uma competência e a um domínio de conteúdo
+  pertinentes ao ENAMED/DCNs, sem apenas repetir o nome do tema.
+- Use a Taxonomia de Bloom de forma coerente com a dificuldade: questões básicas podem
+  mobilizar compreensão e aplicação simples; intermediárias devem priorizar aplicação e
+  análise; avançadas devem exigir análise ou avaliação.
+- A dificuldade deve decorrer do raciocínio necessário, e não de obscuridade, excesso de
+  dados, vocabulário raro ou alternativas ambíguas.
+
+2. TEXTO-BASE
+- Deve funcionar como motivador, caso clínico ou situação-estímulo.
+- Deve ser curto, claro, suficiente e indispensável para resolver o item.
+- O estudante não deve conseguir responder corretamente ignorando o texto-base.
+- Inclua somente dados relevantes e apresente-os em ordem clínica ou lógica.
+- Textos, tabelas, resultados, gráficos ou figuras devem ter referência quando utilizados.
+- Não revele a resposta nem introduza pistas lexicais para o gabarito.
+
+3. ENUNCIADO/COMANDO
+- Deve conter uma única tarefa, direta, clara e objetiva.
+- Não deve acrescentar dados novos ao texto-base.
+- Evite comandos negativos, especialmente “não”, “exceto”, “incorreta” ou “errada”.
+- O comando deve ser respondido pelas alternativas e estar alinhado ao nível de Bloom.
+
+4. ALTERNATIVAS
+- Nesta plataforma MAPD, produza cinco alternativas A–E e apenas uma correta.
+- O gabarito deve ser único, inequívoco e defensável à luz das fontes.
+- Distratores devem ser plausíveis e representar erros conceituais, interpretações ou
+  condutas que um estudante real poderia adotar; não use pegadinhas.
+- Mantenha paralelismo sintático e semântico entre todas as opções.
+- Use extensão semelhante ou ordem lógica; não deixe o gabarito sistematicamente mais
+  completo, específico ou longo.
+- Evite repetição desnecessária do enunciado, pistas gramaticais, discordância, categorias
+  misturadas e sobreposição entre opções.
+- Não use “todas as anteriores”, “nenhuma das anteriores” ou combinações de alternativas.
+- Evite termos absolutos como “sempre”, “nunca”, “todos”, “apenas” e “somente”, salvo
+  quando forem cientificamente indispensáveis e igualmente plausíveis no conjunto.
+
+5. JUSTIFICATIVA E AUDITORIA
+- Justifique cada alternativa separadamente.
+- Use exatamente o formato “A — CERTA:” ou “A — ERRADA:” e repita para B, C, D e E.
+- Explique por que o gabarito está correto e qual erro torna cada distrator incorreto.
+- Vincule a justificativa aos dados do texto-base, ao mecanismo e às fontes; não faça
+  justificativas circulares nem apenas repita a alternativa.
+- Registre habilidade observável, nível de Bloom e referências reais.
+""".strip()
 
 
 class SlideSchema(BaseModel):
@@ -26,7 +77,7 @@ class FonteSchema(BaseModel):
 
 
 class AlternativasSchema(BaseModel):
-    """Objeto fechado para as cinco alternativas exigidas pela avaliação."""
+    """Objeto fechado para as cinco alternativas exigidas pela avaliação MAPD."""
 
     A: str = Field(min_length=1, max_length=1200)
     B: str = Field(min_length=1, max_length=1200)
@@ -42,19 +93,84 @@ class AlternativasSchema(BaseModel):
             raise ValueError("Alternativas vazias não são permitidas.")
         return texto
 
+    @model_validator(mode="after")
+    def validar_conjunto(self):
+        valores = [self.A, self.B, self.C, self.D, self.E]
+        normalizados = [re.sub(r"\s+", " ", valor.casefold()).strip() for valor in valores]
+        if len(set(normalizados)) != 5:
+            raise ValueError("As cinco alternativas devem ser distintas.")
+
+        proibidas = (
+            "todas as anteriores",
+            "todas as alternativas anteriores",
+            "nenhuma das anteriores",
+            "nenhuma das alternativas anteriores",
+        )
+        if any(expressao in alternativa for alternativa in normalizados for expressao in proibidas):
+            raise ValueError("Não use 'todas/nenhuma das anteriores'.")
+        return self
+
 
 class QuestaoObjetivaSchema(BaseModel):
-    enunciado: str = Field(min_length=120)
+    texto_base: str = Field(min_length=120, max_length=2800)
+    enunciado: str = Field(min_length=20, max_length=500)
     alternativas: AlternativasSchema
     gabarito: Literal["A", "B", "C", "D", "E"]
-    justificativa: str = Field(min_length=80)
+    justificativa: str = Field(min_length=240, max_length=7000)
     dificuldade: Literal["básica", "intermediária", "avançada"]
-    nivel_cognitivo: str
-    habilidade: str
+    nivel_cognitivo: Literal["lembrar", "compreender", "aplicar", "analisar", "avaliar"]
+    habilidade: str = Field(min_length=20, max_length=1200)
+    alinhamento_enamed: str = Field(min_length=30, max_length=1600)
     referencias: list[FonteSchema] = Field(default_factory=list)
+
+    @field_validator("enunciado")
+    @classmethod
+    def validar_comando_positivo(cls, valor):
+        texto = str(valor).strip()
+        if re.search(r"\b(não|exceto|incorreta|errada)\b", texto, flags=re.IGNORECASE):
+            raise ValueError("O enunciado deve evitar formulação negativa.")
+        return texto
+
+    @model_validator(mode="after")
+    def validar_justificativa_por_alternativa(self):
+        texto = self.justificativa.upper()
+        rotulos = {}
+        for letra in "ABCDE":
+            encontrado = re.search(
+                rf"(?:^|\n)\s*{letra}\s*[—–\-:)]*\s*(CERTA|ERRADA)\s*:",
+                texto,
+            )
+            if not encontrado:
+                raise ValueError(
+                    "A justificativa deve identificar A–E como CERTA ou ERRADA."
+                )
+            rotulos[letra] = encontrado.group(1)
+
+        if rotulos[self.gabarito] != "CERTA":
+            raise ValueError("O gabarito deve estar identificado como CERTA na justificativa.")
+        if any(
+            classificacao != ("CERTA" if letra == self.gabarito else "ERRADA")
+            for letra, classificacao in rotulos.items()
+        ):
+            raise ValueError("Apenas o gabarito pode estar identificado como CERTA.")
+        return self
 
     def alternativas_dict(self):
         return self.alternativas.model_dump()
+
+    def enunciado_completo(self):
+        return f"{self.texto_base.strip()}\n\n{self.enunciado.strip()}"
+
+    def referencias_registro(self):
+        referencias = [fonte.model_dump() for fonte in self.referencias]
+        referencias.append(
+            {
+                "titulo": "Alinhamento ENAMED/DCNs",
+                "url": "",
+                "resumo": self.alinhamento_enamed.strip(),
+            }
+        )
+        return referencias
 
 
 class QuestaoDiscursivaSchema(BaseModel):
@@ -369,28 +485,36 @@ habilidade e referências. Não produza questões objetivas nesta resposta.
         start=1,
     ):
         anteriores = "\n".join(
-            f"- {questao.enunciado[:260]}" for questao in objetivas
+            f"- {questao.texto_base[:180]} | {questao.enunciado[:120]}"
+            for questao in objetivas
         ) or "- Nenhuma questão anterior."
         lote, _ = _gerar_estruturado(
             f"""
 {base}
 
-Produza o lote {numero_lote} de 3, contendo exatamente 5 questões objetivas inéditas no padrão ENAMED.
-Distribuição obrigatória neste lote: {basicas} básicas, {intermediarias} intermediárias e {avancadas} avançada(s).
-Cada questão deve:
-- apresentar situação-problema ou cenário clínico;
-- conter cinco alternativas A, B, C, D e E, homogêneas e plausíveis;
-- ter somente uma resposta defensável;
-- evitar pistas gramaticais, absolutismos, negativas desnecessárias e pegadinhas;
-- registrar gabarito, justificativa, habilidade, nível cognitivo e referências.
+{DIRETRIZES_ENAMED_OBJETIVAS}
 
-Não repita nem parafraseie excessivamente estes enunciados já gerados:
+Produza o lote {numero_lote} de 3, contendo exatamente 5 questões objetivas inéditas de resposta única.
+Distribuição obrigatória neste lote: {basicas} básicas, {intermediarias} intermediárias e {avancadas} avançada(s).
+
+Requisitos adicionais do lote:
+- preencha `texto_base` e `enunciado` separadamente;
+- em `nivel_cognitivo`, use exatamente: lembrar, compreender, aplicar, analisar ou avaliar;
+- em `alinhamento_enamed`, resuma área principal/secundária pertinente, perfil do avaliado,
+  competência e domínio de conteúdo mobilizados;
+- em `justificativa`, apresente cinco blocos em linhas separadas, no formato:
+  A — CERTA/ERRADA: explicação; B — CERTA/ERRADA: explicação; e assim até E;
+- não use perguntas de mera identificação de espécie quando o mesmo conteúdo puder avaliar
+  integração entre dados clínicos, morfofisiologia, patogênese, evidência diagnóstica e mecanismo;
+- o texto-base precisa conter os dados necessários, mas não dados ornamentais.
+
+Não repita nem parafraseie excessivamente estes itens já gerados:
 {anteriores}
 
 Não produza slides nem questões discursivas nesta resposta.
 """,
             ObjetivasLoteSchema,
-            7000,
+            8000,
         )
         objetivas.extend(lote.objetivas)
 
