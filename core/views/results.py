@@ -42,12 +42,20 @@ def ajustar_nota(request, tentativa_id):
 def reprocessar_feedback(request, tentativa_id):
     tentativa = get_object_or_404(Tentativa, pk=tentativa_id)
     try:
-        tentativa.feedback = gerar_feedback(tentativa) if settings.GEMINI_API_KEY else feedback_deterministico(tentativa)
-        tentativa.feedback_gerado_em = timezone.now()
-        tentativa.save(update_fields=["feedback", "feedback_gerado_em"])
-        messages.success(request, "Feedback reprocessado.")
-    except Exception as exc:
-        messages.error(request, f"Falha ao reprocessar: {exc}")
+        if settings.GEMINI_API_KEY:
+            tentativa.feedback = gerar_feedback(tentativa)
+            messages.success(request, "Feedback por IA reprocessado.")
+        else:
+            tentativa.feedback = feedback_deterministico(tentativa)
+            messages.success(request, "Feedback básico reprocessado.")
+    except Exception:
+        tentativa.feedback = feedback_deterministico(tentativa)
+        messages.warning(
+            request,
+            "A IA não respondeu desta vez; o feedback básico foi reconstruído e permanece disponível.",
+        )
+    tentativa.feedback_gerado_em = timezone.now()
+    tentativa.save(update_fields=["feedback", "feedback_gerado_em"])
     return redirect("tentativa_detalhe", tentativa_id=tentativa.pk)
 
 
