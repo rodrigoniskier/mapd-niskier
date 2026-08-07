@@ -2,11 +2,12 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.test import SimpleTestCase, override_settings
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from core.services import gemini
 from core.services.gemini import (
     AlternativasSchema,
+    DIRETRIZES_ENAMED_OBJETIVAS,
     DiscursivasLoteSchema,
     ObjetivasLoteSchema,
     PacoteEstudoSchema,
@@ -48,6 +49,40 @@ class ClienteFalso:
         self.closed = True
 
 
+def questao_valida(**alteracoes):
+    dados = {
+        "texto_base": (
+            "Um adulto apresenta quadro infeccioso com dados clínicos, laboratoriais e "
+            "microbiológicos suficientes para relacionar o mecanismo bacteriano à manifestação observada."
+        ),
+        "enunciado": "Considerando o caso apresentado, assinale a alternativa que melhor explica o mecanismo envolvido.",
+        "alternativas": AlternativasSchema(
+            A="Ativação de um mecanismo bacteriano compatível com os dados do caso.",
+            B="Inibição de uma via que não explica os achados apresentados.",
+            C="Produção de um fator sem relação causal com o quadro descrito.",
+            D="Alteração estrutural incompatível com a evidência laboratorial.",
+            E="Resposta do hospedeiro que não corresponde ao mecanismo solicitado.",
+        ),
+        "gabarito": "A",
+        "justificativa": (
+            "A — CERTA: relaciona corretamente os dados clínicos ao mecanismo bacteriano descrito.\n"
+            "B — ERRADA: propõe uma via incompatível com os achados apresentados.\n"
+            "C — ERRADA: atribui causalidade a um fator que não explica o caso.\n"
+            "D — ERRADA: contradiz a evidência laboratorial disponível.\n"
+            "E — ERRADA: descreve fenômeno distinto da tarefa solicitada no enunciado."
+        ),
+        "dificuldade": "intermediária",
+        "nivel_cognitivo": "analisar",
+        "habilidade": "Integrar dados clínicos e microbiológicos para explicar um mecanismo de doença.",
+        "alinhamento_enamed": (
+            "Área de bases biológicas, competência de raciocínio clínico e domínio dos processos celulares alterados."
+        ),
+        "referencias": [],
+    }
+    dados.update(alteracoes)
+    return QuestaoObjetivaSchema(**dados)
+
+
 class GeminiSchemaCompatibilidadeTest(SimpleTestCase):
     def test_schema_nao_usa_chave_additional_properties(self):
         schema = PacoteEstudoSchema.model_json_schema()
@@ -61,32 +96,35 @@ class GeminiSchemaCompatibilidadeTest(SimpleTestCase):
         self.assertEqual(dados.get("response_mime_type"), "application/json")
 
     def test_alternativas_sao_convertidas_para_json_simples(self):
-        questao = QuestaoObjetivaSchema(
-            enunciado="Caso clínico suficientemente detalhado para avaliar o raciocínio mecanístico do estudante de Medicina." * 2,
-            alternativas=AlternativasSchema(
-                A="Alternativa A",
-                B="Alternativa B",
-                C="Alternativa C",
-                D="Alternativa D",
-                E="Alternativa E",
-            ),
-            gabarito="A",
-            justificativa="Justificativa mecanística suficientemente detalhada para validar o gabarito e os distratores.",
-            dificuldade="intermediária",
-            nivel_cognitivo="aplicação",
-            habilidade="Integrar mecanismo e manifestação clínica.",
-            referencias=[],
-        )
-        self.assertEqual(
-            questao.alternativas_dict(),
-            {
-                "A": "Alternativa A",
-                "B": "Alternativa B",
-                "C": "Alternativa C",
-                "D": "Alternativa D",
-                "E": "Alternativa E",
-            },
-        )
+        questao = questao_valida()
+        self.assertEqual(set(questao.alternativas_dict()), {"A", "B", "C", "D", "E"})
+        self.assertIn(questao.texto_base, questao.enunciado_completo())
+        self.assertIn(questao.enunciado, questao.enunciado_completo())
+        self.assertEqual(questao.referencias_registro()[-1]["titulo"], "Alinhamento ENAMED/DCNs")
+
+    def test_rejeita_alternativas_repetidas(self):
+        with self.assertRaises(ValidationError):
+            AlternativasSchema(A="Igual", B="Igual", C="C", D="D", E="E")
+
+    def test_rejeita_comando_negativo(self):
+        with self.assertRaises(ValidationError):
+            questao_valida(enunciado="Considerando o caso, assinale a alternativa que não explica o mecanismo.")
+
+    def test_exige_justificativa_de_cada_alternativa(self):
+        with self.assertRaises(ValidationError):
+            questao_valida(justificativa="A — CERTA: correta. B — ERRADA: incorreta.")
+
+    def test_diretrizes_enamed_contem_componentes_do_projeto(self):
+        for termo in (
+            "TEXTO-BASE",
+            "ENUNCIADO/COMANDO",
+            "Distratores",
+            "paralelismo sintático",
+            "Taxonomia de Bloom",
+            "CERTA",
+            "ERRADA",
+        ):
+            self.assertIn(termo.casefold(), DIRETRIZES_ENAMED_OBJETIVAS.casefold())
 
     def test_remove_cerca_markdown_de_json(self):
         texto = '```json\n{"valor":"ok"}\n```'
