@@ -1,4 +1,5 @@
 from .common import *
+from ..services.question_generation import gerar_questoes_adicionais
 
 
 @professor_required
@@ -133,6 +134,62 @@ def gerar_pacote(request, tema_id):
         tarefa.concluida_em = timezone.now()
         tarefa.save(update_fields=["status", "mensagem_erro", "concluida_em"])
         messages.error(request, f"Não foi possível gerar o pacote: {exc}")
+    return redirect("professor_tema", tema_id=tema.pk)
+
+
+@professor_required
+@transaction.atomic
+@require_POST
+def gerar_mais_questoes(request, tema_id):
+    """Acrescenta 15 objetivas e 2 discursivas sem apagar o banco existente."""
+    tema = get_object_or_404(Tema, pk=tema_id)
+    tarefa = TarefaIA.objects.create(tipo=TarefaIA.Tipo.PACOTE, tema=tema, solicitada_por=request.user)
+    tarefa.status = TarefaIA.Status.PROCESSANDO
+    tarefa.iniciada_em = timezone.now()
+    tarefa.save(update_fields=["status", "iniciada_em"])
+    try:
+        lote = gerar_questoes_adicionais(tema)
+        for q in lote.objetivas[:15]:
+            Questao.objects.create(
+                tema=tema,
+                tipo=Questao.Tipo.OBJETIVA,
+                enunciado=q.enunciado_completo(),
+                alternativas=q.alternativas_dict(),
+                gabarito=q.gabarito,
+                justificativa=q.justificativa,
+                dificuldade=q.dificuldade,
+                nivel_cognitivo=q.nivel_cognitivo,
+                habilidade=q.habilidade[:200],
+                referencias=q.referencias_registro(),
+                status=Questao.Status.RASCUNHO,
+                criada_por_ia=True,
+            )
+        for q in lote.discursivas[:2]:
+            Questao.objects.create(
+                tema=tema,
+                tipo=Questao.Tipo.DISCURSIVA,
+                enunciado=q.enunciado,
+                erros_propositais=q.erros_propositais,
+                justificativa=q.justificativa,
+                habilidade=q.habilidade[:200],
+                referencias=[f.model_dump() for f in q.referencias],
+                status=Questao.Status.RASCUNHO,
+                criada_por_ia=True,
+            )
+        tarefa.status = TarefaIA.Status.CONCLUIDA
+        tarefa.concluida_em = timezone.now()
+        tarefa.save(update_fields=["status", "concluida_em"])
+        messages.success(
+            request,
+            "17 novas questões foram acrescentadas como rascunho: 15 objetivas e 2 discursivas. "
+            "O banco anterior foi preservado.",
+        )
+    except Exception as exc:
+        tarefa.status = TarefaIA.Status.ERRO
+        tarefa.mensagem_erro = str(exc)[:4000]
+        tarefa.concluida_em = timezone.now()
+        tarefa.save(update_fields=["status", "mensagem_erro", "concluida_em"])
+        messages.error(request, f"Não foi possível gerar mais questões: {exc}")
     return redirect("professor_tema", tema_id=tema.pk)
 
 
