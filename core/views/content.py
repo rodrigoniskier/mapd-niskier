@@ -98,14 +98,14 @@ def gerar_pacote(request, tema_id):
             Questao.objects.create(
                 tema=tema,
                 tipo=Questao.Tipo.OBJETIVA,
-                enunciado=q.enunciado,
+                enunciado=q.enunciado_completo(),
                 alternativas=q.alternativas_dict(),
                 gabarito=q.gabarito,
                 justificativa=q.justificativa,
                 dificuldade=q.dificuldade,
                 nivel_cognitivo=q.nivel_cognitivo,
-                habilidade=q.habilidade,
-                referencias=[f.model_dump() for f in q.referencias],
+                habilidade=q.habilidade[:200],
+                referencias=q.referencias_registro(),
                 status=Questao.Status.RASCUNHO,
                 criada_por_ia=True,
             )
